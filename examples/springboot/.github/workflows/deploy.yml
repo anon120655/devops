@@ -2,7 +2,7 @@
 # 🚀 Spring Boot Deploy - Caller Workflow
 # ─────────────────────────────────────────────────────────────
 # 📁 วางไฟล์นี้ไว้ที่: <springboot-project>/.github/workflows/deploy.yml
-# 📝 แก้ YOUR_ORG เป็นชื่อ Organization ของลูกค้าบน GitHub
+# 📝 แก้ anon120655 เป็นชื่อ Organization ของลูกค้าบน GitHub
 # 📝 แก้ค่า with: ให้ตรงกับ project ของคุณ
 # ─────────────────────────────────────────────────────────────
 name: Deploy
@@ -14,7 +14,7 @@ on:
 
 jobs:
   deploy:
-    uses: YOUR_ORG/devops/.github/workflows/springboot-deploy.yml@main
+    uses: anon120655/devops/.github/workflows/springboot-deploy.yml@main
     with:
       java-version: '17'                                       # ← ปรับตามที่ project ใช้
       build-tool: 'maven'                                      # ← 'maven' หรือ 'gradle'

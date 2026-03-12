@@ -2,7 +2,7 @@
 # 🚀 Angular Deploy - Caller Workflow
 # ─────────────────────────────────────────────────────────────
 # 📁 วางไฟล์นี้ไว้ที่: <angular-project>/.github/workflows/deploy.yml
-# 📝 แก้ YOUR_ORG เป็นชื่อ Organization ของลูกค้าบน GitHub
+# 📝 แก้ anon120655 เป็นชื่อ Organization ของลูกค้าบน GitHub
 # 📝 แก้ค่า with: ให้ตรงกับ project ของคุณ
 # ─────────────────────────────────────────────────────────────
 name: Deploy
@@ -14,7 +14,7 @@ on:
 
 jobs:
   deploy:
-    uses: YOUR_ORG/devops/.github/workflows/angular-deploy.yml@main
+    uses: anon120655/devops/.github/workflows/angular-deploy.yml@main
     with:
       deploy-path: '/home/locus/public_html_uat'          # ← แก้ตาม path บน server
       node-version: '20'

@@ -2,7 +2,7 @@
 # 🔍 Angular CI - Caller Workflow
 # ─────────────────────────────────────────────────────────────
 # 📁 วางไฟล์นี้ไว้ที่: <angular-project>/.github/workflows/ci.yml
-# 📝 แก้ YOUR_ORG เป็นชื่อ Organization ของลูกค้าบน GitHub
+# 📝 แก้ anon120655 เป็นชื่อ Organization ของลูกค้าบน GitHub
 # ─────────────────────────────────────────────────────────────
 name: CI
 
@@ -14,7 +14,7 @@ on:
 
 jobs:
   quality:
-    uses: YOUR_ORG/devops/.github/workflows/angular-ci.yml@main
+    uses: anon120655/devops/.github/workflows/angular-ci.yml@main
     with:
       node-version: '20'
       angular-build-configuration: 'production'
