@@ -1,0 +1,165 @@
+# 🚀 Reusable Angular Deploy (SSH + Static Files)
+# ใช้กับ: Angular Applications
+# 📚 Docs: https://github.com/YOUR_ORG/devops
+
+name: Reusable Angular Deploy
+
+on:
+  workflow_call:
+    inputs:
+      deploy-path:
+        description: 'Deploy path on server (e.g., /home/locus/public_html_uat)'
+        type: string
+        required: true
+      node-version:
+        description: 'Node.js version'
+        type: string
+        default: '20'
+      angular-build-configuration:
+        description: 'Angular build configuration (e.g., production, uat)'
+        type: string
+        default: 'production'
+      prebuild-script:
+        description: 'Script to run before build (e.g., npm run prebuild.uat)'
+        type: string
+        default: ''
+      dist-subfolder:
+        description: 'Subfolder name inside dist/ (ปกติจะเป็นชื่อ project ใน angular.json)'
+        type: string
+        default: ''
+      health-url:
+        description: 'Health check URL (optional)'
+        type: string
+        default: ''
+      runs-on:
+        description: 'Runner to use'
+        type: string
+        default: 'self-hosted'
+    secrets:
+      SSH_PRIVATE_KEY:
+        required: true
+      SSH_HOST:
+        required: true
+      SSH_USERNAME:
+        required: true
+      SSH_PORT:
+        required: false
+
+concurrency:
+  group: deploy-angular-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Angular → Server
+    runs-on: ${{ inputs.runs-on }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ─────────────────────────────────────────────────────────────
+      # 1. Prebuild (optional) - เช่น ปรับวันที่
+      # ─────────────────────────────────────────────────────────────
+      - name: Run prebuild script
+        if: inputs.prebuild-script != ''
+        run: |
+          echo "🔧 Running prebuild: ${{ inputs.prebuild-script }}"
+          ${{ inputs.prebuild-script }}
+          echo "✅ Prebuild done"
+
+      # ─────────────────────────────────────────────────────────────
+      # 2. Build Angular
+      # ─────────────────────────────────────────────────────────────
+      - name: Build Angular
+        run: |
+          echo "🏗️ Building Angular (${{ inputs.angular-build-configuration }})..."
+          npx ng build --configuration=${{ inputs.angular-build-configuration }}
+          echo "✅ Build completed"
+
+      # ─────────────────────────────────────────────────────────────
+      # 3. Setup SSH Key
+      # ─────────────────────────────────────────────────────────────
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.SSH_PORT || 22 }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      # ─────────────────────────────────────────────────────────────
+      # 4. Deploy static files to server
+      # ─────────────────────────────────────────────────────────────
+      - name: Deploy to server
+        env:
+          DEPLOY_PATH: ${{ inputs.deploy-path }}
+          DIST_SUB: ${{ inputs.dist-subfolder }}
+        run: |
+          echo "📦 Deploying Angular build to server..."
+
+          # กำหนด source path
+          if [ -n "$DIST_SUB" ]; then
+            SOURCE="dist/${DIST_SUB}/"
+          else
+            SOURCE="dist/"
+          fi
+
+          echo "📂 Source: $SOURCE → $DEPLOY_PATH"
+
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }}" \
+            "$SOURCE" ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH/
+
+          echo "✅ Deploy completed"
+
+      # ─────────────────────────────────────────────────────────────
+      # 5. Health Check (optional)
+      # ─────────────────────────────────────────────────────────────
+      - name: Health check
+        if: inputs.health-url != ''
+        run: |
+          echo "🩺 Running health check..."
+          sleep 5
+
+          for i in {1..3}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ inputs.health-url }}" || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Health check passed (HTTP $HTTP_CODE)"
+              exit 0
+            fi
+            echo "⏳ Attempt $i: HTTP $HTTP_CODE, retrying in 5s..."
+            sleep 5
+          done
+
+          echo "⚠️ Health check could not reach ${{ inputs.health-url }}"
+
+      # ─────────────────────────────────────────────────────────────
+      # 6. Cleanup SSH Key
+      # ─────────────────────────────────────────────────────────────
+      - name: Cleanup SSH Key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      # ─────────────────────────────────────────────────────────────
+      # 📊 Summary
+      # ─────────────────────────────────────────────────────────────
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🚀 Angular Deployment Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | ${{ job.status == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Configuration** | ${{ inputs.angular-build-configuration }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Deploy Path** | ${{ inputs.deploy-path }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tag** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────
+# 🚀 Angular Deploy - Caller Workflow
+# ─────────────────────────────────────────────────────────────
+# 📁 วางไฟล์นี้ไว้ที่: <angular-project>/.github/workflows/deploy.yml
+# 📝 แก้ YOUR_ORG เป็นชื่อ Organization ของลูกค้าบน GitHub
+# 📝 แก้ค่า with: ให้ตรงกับ project ของคุณ
+# ─────────────────────────────────────────────────────────────
+name: Deploy
+
+on:
+  push:
+    tags: ['v*']                # ← trigger เมื่อสร้าง tag เช่น v1.0.0
+  workflow_dispatch:            # ← หรือ กด Run workflow manually ที่ Actions tab
+
+jobs:
+  deploy:
+    uses: YOUR_ORG/devops/.github/workflows/angular-deploy.yml@main
+    with:
+      deploy-path: '/home/locus/public_html_uat'          # ← แก้ตาม path บน server
+      node-version: '20'
+      angular-build-configuration: 'uat'                  # ← แก้ตาม environment (uat/production)
+      prebuild-script: 'npm run prebuild.uat'             # ← ลบออกถ้าไม่มี prebuild script
+      dist-subfolder: 'thaihealth-eform'                  # ← ชื่อ subfolder ใน dist/ (ดูจาก angular.json)
+      # health-url: 'https://your-domain.com'             # ← (optional) URL สำหรับ health check
+      runs-on: 'self-hosted'
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}

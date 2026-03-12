@@ -1,0 +1,21 @@
+# ─────────────────────────────────────────────────────────────
+# 🔍 Spring Boot CI - Caller Workflow
+# ─────────────────────────────────────────────────────────────
+# 📁 วางไฟล์นี้ไว้ที่: <springboot-project>/.github/workflows/ci.yml
+# 📝 แก้ YOUR_ORG เป็นชื่อ Organization ของลูกค้าบน GitHub
+# ─────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  quality:
+    uses: YOUR_ORG/devops/.github/workflows/springboot-ci.yml@main
+    with:
+      java-version: '17'              # ← ปรับตามที่ project ใช้ (8, 11, 17, 21)
+      build-tool: 'maven'             # ← 'maven' หรือ 'gradle'
+      runs-on: 'self-hosted'

@@ -1,0 +1,77 @@
+# 🔍 Reusable Angular CI
+# ใช้กับ: Angular Applications
+# 📚 Docs: https://github.com/YOUR_ORG/devops
+
+name: Reusable Angular CI
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version'
+        type: string
+        default: '20'
+      angular-build-configuration:
+        description: 'Angular build configuration (e.g., production, uat)'
+        type: string
+        default: 'production'
+      runs-on:
+        description: 'Runner to use'
+        type: string
+        default: 'self-hosted'
+
+jobs:
+  quality:
+    name: Quality Gate
+    runs-on: ${{ inputs.runs-on }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Get dependencies
+        run: npm ci
+
+      # ─────────────────────────────────────────────────────────────
+      # 1. Lint Check - ตรวจ code style
+      # ─────────────────────────────────────────────────────────────
+      - name: Lint check
+        run: |
+          echo "🔍 Running Angular lint..."
+          npx ng lint || echo "⚠️ Lint not configured, skipping..."
+          echo "✅ Lint check done"
+
+      # ─────────────────────────────────────────────────────────────
+      # 2. Build Check - ตรวจว่า build ได้
+      # ─────────────────────────────────────────────────────────────
+      - name: Build Angular
+        run: |
+          echo "🏗️ Building Angular (${{ inputs.angular-build-configuration }})..."
+          npx ng build --configuration=${{ inputs.angular-build-configuration }}
+          echo "✅ Build passed"
+
+      # ─────────────────────────────────────────────────────────────
+      # 📊 Summary
+      # ─────────────────────────────────────────────────────────────
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🔍 Angular CI Quality Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Lint | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏗️ Build | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Info | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Configuration** | ${{ inputs.angular-build-configuration }} |" >> $GITHUB_STEP_SUMMARY

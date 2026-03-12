@@ -1,0 +1,210 @@
+# 🚀 Reusable Spring Boot Deploy (SSH + WAR/Tomcat)
+# ใช้กับ: Java Spring Boot deployed on Tomcat
+# 📚 Docs: https://github.com/YOUR_ORG/devops
+
+name: Reusable Spring Boot Deploy
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: 'Java version'
+        type: string
+        default: '17'
+      java-distribution:
+        description: 'Java distribution'
+        type: string
+        default: 'temurin'
+      build-tool:
+        description: 'Build tool: maven or gradle'
+        type: string
+        default: 'maven'
+      war-filename:
+        description: 'WAR filename (e.g., thaihealth-eform-backend.war)'
+        type: string
+        required: true
+      tomcat-webapps-path:
+        description: 'Tomcat webapps path (e.g., /opt/tomcat/webapps)'
+        type: string
+        default: '/opt/tomcat/webapps'
+      deploy-staging-path:
+        description: 'Staging path for WAR file on server (e.g., /home/locus/deploy)'
+        type: string
+        default: '/home/locus/deploy'
+      tomcat-service-name:
+        description: 'Tomcat service name (e.g., tomcat)'
+        type: string
+        default: 'tomcat'
+      health-url:
+        description: 'Health check URL (optional)'
+        type: string
+        default: ''
+      runs-on:
+        description: 'Runner to use'
+        type: string
+        default: 'self-hosted'
+    secrets:
+      SSH_PRIVATE_KEY:
+        required: true
+      SSH_HOST:
+        required: true
+      SSH_USERNAME:
+        required: true
+      SSH_PORT:
+        required: false
+
+concurrency:
+  group: deploy-springboot-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Spring Boot → Server
+    runs-on: ${{ inputs.runs-on }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+
+      # ─────────────────────────────────────────────────────────────
+      # 1. Build WAR file
+      # ─────────────────────────────────────────────────────────────
+      - name: Build WAR (Maven)
+        if: inputs.build-tool == 'maven'
+        run: |
+          echo "🏗️ Building WAR with Maven..."
+          chmod +x mvnw 2>/dev/null || true
+          ./mvnw clean package -DskipTests --batch-mode || mvn clean package -DskipTests --batch-mode
+          echo "✅ WAR build completed"
+
+      - name: Build WAR (Gradle)
+        if: inputs.build-tool == 'gradle'
+        run: |
+          echo "🏗️ Building WAR with Gradle..."
+          chmod +x gradlew 2>/dev/null || true
+          ./gradlew clean bootWar -x test || gradle clean bootWar -x test
+          echo "✅ WAR build completed"
+
+      # ─────────────────────────────────────────────────────────────
+      # 2. Setup SSH Key
+      # ─────────────────────────────────────────────────────────────
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.SSH_PORT || 22 }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      # ─────────────────────────────────────────────────────────────
+      # 3. Copy WAR to server
+      # ─────────────────────────────────────────────────────────────
+      - name: Copy WAR to server
+        env:
+          WAR_FILENAME: ${{ inputs.war-filename }}
+          STAGING_PATH: ${{ inputs.deploy-staging-path }}
+        run: |
+          echo "📦 Copying WAR to server..."
+
+          # ค้นหา WAR file
+          WAR_FILE=$(find . -name "*.war" -path "*/target/*" -o -name "*.war" -path "*/build/libs/*" | head -1)
+
+          if [ -z "$WAR_FILE" ]; then
+            echo "❌ WAR file not found!"
+            exit 1
+          fi
+
+          echo "📂 Found WAR: $WAR_FILE"
+
+          # สร้าง staging directory บน server
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${STAGING_PATH}"
+
+          # Copy WAR file ไป server
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT || 22 }} \
+            "$WAR_FILE" ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${STAGING_PATH}/${WAR_FILENAME}
+
+          echo "✅ WAR copied to server"
+
+      # ─────────────────────────────────────────────────────────────
+      # 4. Deploy on server (stop Tomcat → replace WAR → start Tomcat)
+      # ─────────────────────────────────────────────────────────────
+      - name: Deploy WAR on server
+        env:
+          WAR_FILENAME: ${{ inputs.war-filename }}
+          WEBAPPS_PATH: ${{ inputs.tomcat-webapps-path }}
+          STAGING_PATH: ${{ inputs.deploy-staging-path }}
+          TOMCAT_SERVICE: ${{ inputs.tomcat-service-name }}
+        run: |
+          echo "🚀 Deploying on server..."
+
+          # ดึงชื่อ app (ตัด .war ออก)
+          APP_DIR="${WAR_FILENAME%.war}"
+
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
+            echo "🛑 Stopping Tomcat..."
+            sudo service ${TOMCAT_SERVICE} stop || sudo systemctl stop ${TOMCAT_SERVICE} || true
+
+            echo "🗑️ Removing old deployment..."
+            sudo rm -rf ${WEBAPPS_PATH}/${APP_DIR}
+            sudo rm -rf ${WEBAPPS_PATH}/${WAR_FILENAME}
+
+            echo "📦 Deploying new WAR..."
+            sudo cp ${STAGING_PATH}/${WAR_FILENAME} ${WEBAPPS_PATH}/${WAR_FILENAME}
+
+            echo "▶️ Starting Tomcat..."
+            sudo service ${TOMCAT_SERVICE} start || sudo systemctl start ${TOMCAT_SERVICE}
+
+            echo "✅ Deploy completed"
+          DEPLOY_SCRIPT
+
+      # ─────────────────────────────────────────────────────────────
+      # 5. Health Check (optional)
+      # ─────────────────────────────────────────────────────────────
+      - name: Health check
+        if: inputs.health-url != ''
+        run: |
+          echo "🩺 Waiting for Tomcat to start..."
+          sleep 30
+
+          for i in {1..5}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ inputs.health-url }}" || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Health check passed (HTTP $HTTP_CODE)"
+              exit 0
+            fi
+            echo "⏳ Attempt $i: HTTP $HTTP_CODE, retrying in 15s..."
+            sleep 15
+          done
+
+          echo "⚠️ Health check could not reach ${{ inputs.health-url }}"
+
+      # ─────────────────────────────────────────────────────────────
+      # 6. Cleanup
+      # ─────────────────────────────────────────────────────────────
+      - name: Cleanup SSH Key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      # ─────────────────────────────────────────────────────────────
+      # 📊 Summary
+      # ─────────────────────────────────────────────────────────────
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🚀 Spring Boot Deployment Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | ${{ job.status == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **WAR** | ${{ inputs.war-filename }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tomcat** | ${{ inputs.tomcat-webapps-path }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Java** | ${{ inputs.java-version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tag** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY

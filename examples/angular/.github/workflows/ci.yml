@@ -1,0 +1,21 @@
+# ─────────────────────────────────────────────────────────────
+# 🔍 Angular CI - Caller Workflow
+# ─────────────────────────────────────────────────────────────
+# 📁 วางไฟล์นี้ไว้ที่: <angular-project>/.github/workflows/ci.yml
+# 📝 แก้ YOUR_ORG เป็นชื่อ Organization ของลูกค้าบน GitHub
+# ─────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  quality:
+    uses: YOUR_ORG/devops/.github/workflows/angular-ci.yml@main
+    with:
+      node-version: '20'
+      angular-build-configuration: 'production'
+      runs-on: 'self-hosted'
