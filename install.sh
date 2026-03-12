@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # 🚀 CI/CD Templates Installer
-# ใช้งาน: git clone git@github.com:YOUR_ORG/devops.git /tmp/cicd && /tmp/cicd/install.sh <framework> && rm -rf /tmp/cicd
+# ใช้งาน: git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh <framework> && rm -rf /tmp/cicd
 
 set -e
 
 FRAMEWORK=$1
-REPO_URL="git@github.com:YOUR_ORG/devops.git"   # ← เปลี่ยน YOUR_ORG เป็นชื่อ org ลูกค้า
+REPO_URL="git@github.com:anon120655/devops.git"
 BRANCH="main"
 
 # ─────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ if [ -z "$FRAMEWORK" ]; then
   echo "  ✅ springboot    - Spring Boot (SSH + WAR/Tomcat)"
   echo ""
   echo "Example:"
-  echo "  git clone git@github.com:YOUR_ORG/devops.git /tmp/cicd && /tmp/cicd/install.sh angular"
+  echo "  git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh angular"
   echo ""
   exit 1
 fi
@@ -97,8 +97,7 @@ echo "📁 Files created:"
 ls -la .github/workflows/
 echo ""
 echo "📋 ขั้นตอนต่อไป:"
-echo "   1. แก้ไข YOUR_ORG ในไฟล์ .github/workflows/*.yml"
-echo "      เป็นชื่อ GitHub Organization ของคุณ"
+echo "   1. ✅ Organization ถูกตั้งค่าเป็น anon120655 แล้ว"
 echo ""
 echo "   2. แก้ไขค่า config ในไฟล์ .github/workflows/deploy.yml"
 
@@ -128,5 +127,5 @@ echo "   4. Push code ขึ้น git และสร้าง Tag เพื่
 echo "      git tag v1.0.0"
 echo "      git push origin v1.0.0"
 echo ""
-echo "✅ Workflows ใช้ Reusable Templates จาก YOUR_ORG/devops"
+echo "✅ Workflows ใช้ Reusable Templates จาก anon120655/devops"
 echo "   แก้ไขที่ต้นทางที่เดียว ทุก project อัพเดตตาม!"

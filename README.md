@@ -2,7 +2,7 @@
 
 ระบบ CI/CD กลางสำหรับองค์กร — แก้ไขที่เดียว ทุก project อัพเดตตาม!
 
-> ⚠️ **สำคัญ**: แก้ `YOUR_ORG` ทุกที่ในไฟล์นี้และ workflow files ให้เป็นชื่อ GitHub Organization จริงของคุณ
+> ✅ **Organization**: ตั้งค่าเป็น `anon120655` แล้ว
 
 ---
 
@@ -10,10 +10,10 @@
 
 ```bash
 # Angular
-git clone git@github.com:YOUR_ORG/devops.git /tmp/cicd && /tmp/cicd/install.sh angular && rm -rf /tmp/cicd
+git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh angular && rm -rf /tmp/cicd
 
 # Spring Boot
-git clone git@github.com:YOUR_ORG/devops.git /tmp/cicd && /tmp/cicd/install.sh springboot && rm -rf /tmp/cicd
+git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh springboot && rm -rf /tmp/cicd
 ```
 
 ---
@@ -59,7 +59,7 @@ on:
 
 jobs:
   quality:
-    uses: YOUR_ORG/devops/.github/workflows/angular-ci.yml@main
+    uses: anon120655/devops/.github/workflows/angular-ci.yml@main
     with:
       node-version: '20'
 ```
@@ -72,17 +72,17 @@ jobs:
 
 ```bash
 cd /path/to/your/project
-git clone git@github.com:YOUR_ORG/devops.git /tmp/cicd && /tmp/cicd/install.sh angular && rm -rf /tmp/cicd
+git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh angular && rm -rf /tmp/cicd
 ```
 
-### 2. แก้ไข YOUR_ORG
+### 2. ตรวจสอบ Organization Name
 
-เปิดไฟล์ `.github/workflows/ci.yml` และ `deploy.yml` แล้วเปลี่ยน `YOUR_ORG` เป็นชื่อ Organization จริง:
+ไฟล์ `.github/workflows/ci.yml` และ `deploy.yml` ถูกตั้งค่า Organization เป็น `anon120655` แล้ว:
 
 ```yaml
 jobs:
   quality:
-    uses: YOUR_ORG/devops/.github/workflows/angular-ci.yml@main
+    uses: anon120655/devops/.github/workflows/angular-ci.yml@main
     #     ^^^^^^^^ แก้ตรงนี้
 ```
 
@@ -123,9 +123,9 @@ with:
 
 เนื่องจาก reusable workflows อยู่ใน repo แยก (devops) ต้องตั้งค่าให้ repos อื่นเข้าถึงได้:
 
-1. ไปที่ **YOUR_ORG/devops** repo
+1. ไปที่ **anon120655/devops** repo
 2. Settings > Actions > General
-3. เลือก **"Allow access to repositories in the YOUR_ORG organization"**
+3. เลือก **"Allow access to repositories in the anon120655 organization"**
 
 ### 6. ตั้งค่า Self-hosted Runner (ถ้าต้องเชื่อม VPN)
 
@@ -141,7 +141,7 @@ curl -o actions-runner-linux-x64-2.xxx.x.tar.gz -L https://github.com/actions/ru
 tar xzf ./actions-runner-linux-x64-2.xxx.x.tar.gz
 
 # Configure
-./config.sh --url https://github.com/YOUR_ORG/your-repo --token YOUR_TOKEN
+./config.sh --url https://github.com/anon120655/your-repo --token YOUR_TOKEN
 
 # Run as service
 sudo ./svc.sh install
