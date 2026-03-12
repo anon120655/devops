@@ -16,6 +16,6 @@ jobs:
   quality:
     uses: anon120655/devops/.github/workflows/angular-ci.yml@main
     with:
-      node-version: '20'
+      node-version: '16'
       angular-build-configuration: 'production'
       runs-on: 'self-hosted'

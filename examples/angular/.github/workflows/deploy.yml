@@ -17,7 +17,7 @@ jobs:
     uses: anon120655/devops/.github/workflows/angular-deploy.yml@main
     with:
       deploy-path: '/home/locus/public_html_uat'          # ← แก้ตาม path บน server
-      node-version: '20'
+      node-version: '16'
       angular-build-configuration: 'uat'                  # ← แก้ตาม environment (uat/production)
       prebuild-script: 'npm run prebuild.uat'             # ← ลบออกถ้าไม่มี prebuild script
       dist-subfolder: 'thaihealth-eform'                  # ← ชื่อ subfolder ใน dist/ (ดูจาก angular.json)

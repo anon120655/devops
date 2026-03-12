@@ -75,7 +75,7 @@ jobs:
   quality:
     uses: anon120655/devops/.github/workflows/angular-ci.yml@main
     with:
-      node-version: '20'
+      node-version: '16'
 ```
 
 ---
@@ -204,7 +204,7 @@ devops/
 ### angular-ci.yml
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `node-version` | string | `'20'` | Node.js version |
+| `node-version` | string | `'16'` | Node.js version |
 | `angular-build-configuration` | string | `'production'` | Build configuration |
 | `runs-on` | string | `'self-hosted'` | Runner |
 
@@ -212,7 +212,7 @@ devops/
 | Input | Type | Required | Description |
 |-------|------|----------|-------------|
 | `deploy-path` | string | ✅ | Path บน server สำหรับวาง static files |
-| `node-version` | string | | Node.js version (default: 20) |
+| `node-version` | string | | Node.js version (default: 16) |
 | `angular-build-configuration` | string | | Build config: uat, production |
 | `prebuild-script` | string | | Script ก่อน build (เช่น npm run prebuild.uat) |
 | `dist-subfolder` | string | | Subfolder ใน dist/ (ดูจาก angular.json) |

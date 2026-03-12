@@ -10,7 +10,7 @@ on:
       node-version:
         description: 'Node.js version'
         type: string
-        default: '20'
+        default: '16'
       angular-build-configuration:
         description: 'Angular build configuration (e.g., production, uat)'
         type: string
