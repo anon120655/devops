@@ -8,6 +8,8 @@
 
 ## ⚡ Quick Install
 
+### Linux / Mac
+
 ```bash
 # Angular
 git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh angular && rm -rf /tmp/cicd
@@ -15,6 +17,18 @@ git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh
 # Spring Boot
 git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh springboot && rm -rf /tmp/cicd
 ```
+
+### Windows (PowerShell)
+
+```powershell
+# Angular
+Remove-Item -Recurse -Force C:\tmp\cicd -ErrorAction SilentlyContinue; git clone git@github.com:anon120655/devops.git C:\tmp\cicd; & "C:\Program Files\Git\bin\bash.exe" C:\tmp\cicd\install.sh angular; Remove-Item -Recurse -Force C:\tmp\cicd
+
+# Spring Boot
+Remove-Item -Recurse -Force C:\tmp\cicd -ErrorAction SilentlyContinue; git clone git@github.com:anon120655/devops.git C:\tmp\cicd; & "C:\Program Files\Git\bin\bash.exe" C:\tmp\cicd\install.sh springboot; Remove-Item -Recurse -Force C:\tmp\cicd
+```
+
+> 💡 **หมายเหตุ**: Windows ต้องมี [Git for Windows](https://git-scm.com/download/win) ติดตั้งอยู่ (ใช้ `bash.exe` ที่มาพร้อม Git)
 
 ---
 
