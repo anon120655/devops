@@ -1,0 +1,27 @@
+# ─────────────────────────────────────────────────────────────
+# 🚀 Angular Deploy - PRODUCTION
+# ─────────────────────────────────────────────────────────────
+# 📁 วางไฟล์นี้ไว้ที่: <angular-project>/.github/workflows/deploy-prod.yml
+# ─────────────────────────────────────────────────────────────
+name: Deploy to PRODUCTION
+
+on:
+  push:
+    tags: ['v*']                # ← trigger เมื่อสร้าง tag เท่านั้น เช่น v1.0.0
+  workflow_dispatch:            # ← หรือ กดรันเอง (เผื่อฉุกเฉิน)
+
+jobs:
+  deploy:
+    uses: anon120655/devops/.github/workflows/angular-deploy.yml@main
+    with:
+      deploy-path: '/home/locus/public_html_prod'         # ← Path โฟลเดอร์บน PROD Server
+      node-version: '16'
+      angular-build-configuration: 'production'           # ← สิ่งนี้จะไปสั่งรัน: ng build --configuration=production
+      prebuild-script: 'npm run prebuild.prod'            # ← ลบออกถ้าโปรเจคนี้ไม่มีการสั่ง prebuild
+      dist-subfolder: 'thaihealth-eform'                  # ← ชื่อ subfolder ใน dist/ (ดูจาก angular.json)
+      runs-on: 'self-hosted'
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+      SSH_HOST: ${{ secrets.PROD_SSH_HOST }}              # ← IP เครื่อง Production จริง
+      SSH_USERNAME: ${{ secrets.PROD_SSH_USERNAME }}
+      SSH_PORT: ${{ secrets.PROD_SSH_PORT }}

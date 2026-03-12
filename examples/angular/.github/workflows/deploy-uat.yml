@@ -1,0 +1,25 @@
+# ─────────────────────────────────────────────────────────────
+# 🚀 Angular Deploy - UAT
+# ─────────────────────────────────────────────────────────────
+# 📁 วางไฟล์นี้ไว้ที่: <angular-project>/.github/workflows/deploy-uat.yml
+# ─────────────────────────────────────────────────────────────
+name: Deploy to UAT
+
+on:
+  workflow_dispatch:            # ← กดปุ่ม Run workflow manually เท่านั้น เพื่อควบคุมการอัปเดต UAT
+
+jobs:
+  deploy:
+    uses: anon120655/devops/.github/workflows/angular-deploy.yml@main
+    with:
+      deploy-path: '/home/locus/public_html_uat'          # ← Path โฟลเดอร์บน UAT Server
+      node-version: '16'
+      angular-build-configuration: 'uat'                  # ← สิ่งนี้จะไปสั่งรัน: ng build --configuration=uat
+      prebuild-script: 'npm run prebuild.uat'             # ← ลบออกถ้าโปรเจคนี้ไม่มีการสั่ง prebuild
+      dist-subfolder: 'thaihealth-eform'                  # ← ชื่อ subfolder ใน dist/ (ดูจาก angular.json)
+      runs-on: 'self-hosted'
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.UAT_SSH_PRIVATE_KEY }}
+      SSH_HOST: ${{ secrets.UAT_SSH_HOST }}               # ← 10.10.1.26
+      SSH_USERNAME: ${{ secrets.UAT_SSH_USERNAME }}       # ← locus
+      SSH_PORT: ${{ secrets.UAT_SSH_PORT }}               # ← 22
