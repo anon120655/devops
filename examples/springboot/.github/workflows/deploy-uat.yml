@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────
+# 🚀 Spring Boot Deploy - UAT
+# ─────────────────────────────────────────────────────────────
+# 📁 วางไฟล์นี้ไว้ที่: <springboot-project>/.github/workflows/deploy-uat.yml
+# 📝 แก้ anon120655 เป็นชื่อ Organization ของลูกค้าบน GitHub
+# 📝 แก้ค่า with: ให้ตรงกับ project ของคุณ
+# ─────────────────────────────────────────────────────────────
+name: Deploy to UAT
+
+on:
+  workflow_dispatch:            # ← กดปุ่ม Run workflow manually เท่านั้น เพื่อควบคุมการอัปเดต UAT
+
+jobs:
+  deploy:
+    uses: anon120655/devops/.github/workflows/springboot-deploy.yml@main
+    with:
+      java-version: '17'                                       # ← ปรับตามที่ project ใช้
+      build-tool: 'maven'                                      # ← 'maven' หรือ 'gradle'
+      war-filename: 'thaihealth-eform-backend.war'             # ← ชื่อไฟล์ WAR ที่ build ออกมา
+      tomcat-webapps-path: '/opt/tomcat/webapps'               # ← path webapps ของ Tomcat บน UAT server
+      deploy-staging-path: '/home/locus/deploy'                # ← path วาง WAR ชั่วคราวก่อน deploy บน UAT server
+      tomcat-service-name: 'tomcat'                            # ← ชื่อ service ของ Tomcat
+      # health-url: 'https://uat-your-domain.com/api/health'   # ← (optional) URL สำหรับ health check UAT
+      runs-on: 'self-hosted'
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.UAT_SSH_PRIVATE_KEY }}
+      SSH_HOST: ${{ secrets.UAT_SSH_HOST }}                    # ← IP เครื่อง UAT
+      SSH_USERNAME: ${{ secrets.UAT_SSH_USERNAME }}
+      SSH_PORT: ${{ secrets.UAT_SSH_PORT }}

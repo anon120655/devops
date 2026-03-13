@@ -56,7 +56,8 @@ devops/.github/workflows/          ← Reusable templates (แก้ที่น
 
 your-project/.github/workflows/   ← Caller workflows (สั้นมาก ~15-25 บรรทัด)
 ├── ci.yml                         เรียกใช้ reusable template
-└── deploy.yml
+├── deploy-uat.yml                 สำหรับ Deploy ขึ้น UAT
+└── deploy-prod.yml                สำหรับ Deploy ขึ้น Production
 ```
 
 ### ตัวอย่าง Caller Workflow (สิ่งที่ติดตั้งใน project)
@@ -91,7 +92,7 @@ git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh
 
 ### 2. ตรวจสอบ Organization Name
 
-ไฟล์ `.github/workflows/ci.yml` และ `deploy.yml` ถูกตั้งค่า Organization เป็น `anon120655` แล้ว:
+ไฟล์ `.github/workflows/ci.yml`, `deploy-uat.yml` และ `deploy-prod.yml` ถูกตั้งค่า Organization เป็น `anon120655` แล้ว:
 
 ```yaml
 jobs:
@@ -100,7 +101,7 @@ jobs:
     #     ^^^^^^^^ แก้ตรงนี้
 ```
 
-### 3. แก้ไข deploy.yml
+### 3. แก้ไขไฟล์ Deploy (deploy-uat.yml, deploy-prod.yml)
 
 #### Angular
 
@@ -189,10 +190,12 @@ devops/
 ├── examples/                       # Caller workflow examples
 │   ├── angular/.github/workflows/
 │   │   ├── ci.yml
-│   │   └── deploy.yml
+│   │   ├── deploy-uat.yml
+│   │   └── deploy-prod.yml
 │   └── springboot/.github/workflows/
 │       ├── ci.yml
-│       └── deploy.yml
+│       ├── deploy-uat.yml
+│       └── deploy-prod.yml
 ├── install.sh                      # Installer script
 └── README.md                       # คู่มือนี้
 ```
