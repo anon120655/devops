@@ -2,10 +2,14 @@
 # ใช้กับ: Angular Applications
 # 📚 Docs: https://github.com/anon120655/devops
 
+# name: ชื่อของ workflow ที่จะแสดงในหน้า Actions ของ GitHub
 name: Reusable Angular Deploy
 
+# on: กำหนดเหตุการณ์ (Trigger) ที่จะทำให้ workflow นี้เริ่มทำงาน
+# (workflow_call คือกำหนดให้เป็น Reusable Workflow หรือให้ workflow อื่นเรียกใช้ได้)
 on:
   workflow_call:
+    # inputs: คือตัวแปร (Parameters) ที่ฝั่งเรียกใช้ต้องส่งต่อเข้ามาให้ workflow นี้
     inputs:
       deploy-path:
         description: 'Deploy path on server (e.g., /home/locus/public_html_uat)'
@@ -35,6 +39,7 @@ on:
         description: 'Runner to use'
         type: string
         default: 'self-hosted'
+    # secrets: ข้อมูลความลับ (เช่น รหัสผ่าน, SSH Keys) ที่ใช้เชื่อมต่อ Server ป้องกันการหลุดรั่วไหล
     secrets:
       SSH_PRIVATE_KEY:
         required: true
@@ -45,15 +50,20 @@ on:
       SSH_PORT:
         required: false
 
+# concurrency: จัดการการทำงานซ้ำซ้อน หากมีการ deploy ซ้ำกัน จะให้รอ, ทำต่อ หรือยกเลิกอันเก่า
 concurrency:
   group: deploy-angular-${{ github.ref }}
   cancel-in-progress: false
 
+# jobs: กำหนดกลุ่มของงาน (Jobs) หลักที่จะให้ workflow นี้ทำ
 jobs:
+  # deploy: ตั้งชื่องานเองได้
   deploy:
     name: Deploy Angular → Server
+    # runs-on: เลือกว่าจะไปรันบน Server หรือระบบไหน (Ubuntu, Windows หรือ self-hosted ของบริษัท)
     runs-on: ${{ inputs.runs-on }}
 
+    # steps: รายการคำสั่งย่อย (Steps) ที่รันเรียงตามลำดับจากบนลงล่าง
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

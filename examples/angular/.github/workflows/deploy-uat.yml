@@ -20,6 +20,6 @@ jobs:
       runs-on: 'self-hosted'
     secrets:
       SSH_PRIVATE_KEY: ${{ secrets.UAT_SSH_PRIVATE_KEY }}
-      SSH_HOST: ${{ secrets.UAT_SSH_HOST }}               # ← 10.10.1.26
-      SSH_USERNAME: ${{ secrets.UAT_SSH_USERNAME }}       # ← locus
-      SSH_PORT: ${{ secrets.UAT_SSH_PORT }}               # ← 22
+      SSH_HOST: ${{ secrets.UAT_SSH_HOST }}
+      SSH_USERNAME: ${{ secrets.UAT_SSH_USERNAME }}
+      SSH_PORT: ${{ secrets.UAT_SSH_PORT }}

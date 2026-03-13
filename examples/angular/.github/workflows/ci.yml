@@ -4,17 +4,25 @@
 # 📁 วางไฟล์นี้ไว้ที่: <angular-project>/.github/workflows/ci.yml
 # 📝 แก้ anon120655 เป็นชื่อ Organization ของลูกค้าบน GitHub
 # ─────────────────────────────────────────────────────────────
+# name: ชื่อของ workflow ที่จะแสดงในหน้า Actions ของ GitHub
 name: CI
 
+# on: กำหนดเหตุการณ์ (Trigger) ที่จะทำให้ workflow นี้ถูกรันอัตโนมัติ
 on:
+  # push: หมายถึงทำงานเมื่อมีการ Push โค้ดขึ้นไปบน Branch ที่กำหนด (เช่น main หรือ develop)
   push:
     branches: [main, develop]
+  # pull_request: หมายถึงทำงานเมื่อมีการเปิด Pull Request เข้ามาที่ Branch ที่กำหนด
   pull_request:
     branches: [main, develop]
 
+# jobs: กำหนดกลุ่มของงาน (Jobs) หลักที่จะทำ แต่ละ Job รันแยกจากกัน หรือรันต่อเนื่องได้
 jobs:
+  # quality: ชื่อของ job (เราตั้งชื่อเองได้ เช่น quality, deploy_uat)
   quality:
+    # uses: คำสั่งสำหรับไปเรียกใช้ Reusable Workflow ที่เขียนเตรียมไว้แล้ว (จาก repo devops)
     uses: anon120655/devops/.github/workflows/angular-ci.yml@main
+    # with: ใช้สำหรับส่งค่าพารามิเตอร์ (arguments) ไปให้กับ Workflow ด้านบน
     with:
       node-version: '16'
       angular-build-configuration: 'production'
