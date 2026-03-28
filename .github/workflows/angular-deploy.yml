@@ -113,7 +113,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
               -p ${{ secrets.SSH_PORT || 22 }} \
-              ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "
+              -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "
             BACKUP_DIR=\"${DEPLOY_PATH}/ib_backup/\$(date +%Y%m%d)\"
             mkdir -p \"\$BACKUP_DIR\"
             echo \"📂 Backup target: \$BACKUP_DIR\"
@@ -155,8 +155,8 @@ jobs:
             --exclude='pre-deploy/' \
             --exclude='selfservice/' \
             --exclude='00_backup_อย่าลบ/' \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }}" \
-            "$SOURCE" ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH/
+            -e "ssh -i ~/.ssh/deploy_key -l '${{ secrets.SSH_USERNAME }}' -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }}" \
+            "$SOURCE" ${{ secrets.SSH_HOST }}:$DEPLOY_PATH/
 
           echo "✅ Deploy completed"
 
