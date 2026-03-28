@@ -31,10 +31,6 @@ on:
         description: 'Subfolder name inside dist/ (ปกติจะเป็นชื่อ project ใน angular.json)'
         type: string
         default: ''
-      health-url:
-        description: 'Health check URL (optional)'
-        type: string
-        default: ''
       runs-on:
         description: 'Runner to use'
         type: string
@@ -72,6 +68,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node-version }}
+          cache: 'npm' # cache npm packages เพื่อเพิ่มความเร็ว (ข้ามดาวน์โหลดซ้ำถ้า package-lock.json ไม่เปลี่ยน)
 
       - name: Install dependencies
         run: npm ci
@@ -106,7 +103,32 @@ jobs:
           ssh-keyscan -p ${{ secrets.SSH_PORT || 22 }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
       # ─────────────────────────────────────────────────────────────
-      # 4. Deploy static files to server
+      # 4. Backup current deployment (ไฟล์ root + assets → ib_backup/YYYYMMDD)
+      # ─────────────────────────────────────────────────────────────
+      - name: Backup current deployment
+        env:
+          DEPLOY_PATH: ${{ inputs.deploy-path }}
+        run: |
+          echo "💾 Backing up current deployment..."
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              -p ${{ secrets.SSH_PORT || 22 }} \
+              ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "
+            BACKUP_DIR=\"${DEPLOY_PATH}/ib_backup/\$(date +%Y%m%d)\"
+            mkdir -p \"\$BACKUP_DIR\"
+            echo \"📂 Backup target: \$BACKUP_DIR\"
+
+            # copy ไฟล์เดี่ยวๆ ใน root (ไม่รวม folder)
+            find \"${DEPLOY_PATH}\" -maxdepth 1 -type f -exec cp {} \"\$BACKUP_DIR/\" \;
+
+            # copy folder assets
+            [ -d \"${DEPLOY_PATH}/assets\" ] && cp -r \"${DEPLOY_PATH}/assets\" \"\$BACKUP_DIR/\"
+
+            echo \"✅ Backup completed → \$BACKUP_DIR\"
+          "
+
+      # ─────────────────────────────────────────────────────────────
+      # 5. Deploy static files to server
       # ─────────────────────────────────────────────────────────────
       - name: Deploy to server
         env:
@@ -124,35 +146,22 @@ jobs:
 
           echo "📂 Source: $SOURCE → $DEPLOY_PATH"
 
+          # --delete: ลบไฟล์บน server ที่ไม่มีใน build ใหม่ (เช่น main.OLD.js) ให้อัตโนมัติ
+          # --exclude: ยกเว้น folder เหล่านี้ไม่ให้ถูกลบ (ไม่ได้มาจาก build)
           rsync -avz --delete \
+            --exclude='ib_backup/' \
+            --exclude='dr/' \
+            --exclude='larngear_backup/' \
+            --exclude='pre-deploy/' \
+            --exclude='selfservice/' \
+            --exclude='00_backup_อย่าลบ/' \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }}" \
             "$SOURCE" ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH/
 
           echo "✅ Deploy completed"
 
       # ─────────────────────────────────────────────────────────────
-      # 5. Health Check (optional)
-      # ─────────────────────────────────────────────────────────────
-      - name: Health check
-        if: inputs.health-url != ''
-        run: |
-          echo "🩺 Running health check..."
-          sleep 5
-
-          for i in {1..3}; do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ inputs.health-url }}" || echo "000")
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Health check passed (HTTP $HTTP_CODE)"
-              exit 0
-            fi
-            echo "⏳ Attempt $i: HTTP $HTTP_CODE, retrying in 5s..."
-            sleep 5
-          done
-
-          echo "⚠️ Health check could not reach ${{ inputs.health-url }}"
-
-      # ─────────────────────────────────────────────────────────────
-      # 6. Cleanup SSH Key
+      # 5. Cleanup SSH Key
       # ─────────────────────────────────────────────────────────────
       - name: Cleanup SSH Key
         if: always()
