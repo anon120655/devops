@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────
+# 🔌 Test SSH Connection (ทดสอบ SSH เข้า Server ก่อน Deploy จริง)
+# ─────────────────────────────────────────────────────────────
+# 📁 วางไฟล์นี้ไว้ที่: <springboot-project>/.github/workflows/test-ssh.yml
+# ✅ ลบทิ้งได้หลังทดสอบสำเร็จแล้ว
+# ─────────────────────────────────────────────────────────────
+name: Test SSH Connection
+
+on:
+  workflow_dispatch:    # กดรันเองเท่านั้น ไม่ trigger อัตโนมัติ
+
+jobs:
+  test-ssh:
+    runs-on: self-hosted
+    steps:
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.PROD_SSH_PORT }} -H ${{ secrets.PROD_SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Test SSH Connection
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              -p ${{ secrets.PROD_SSH_PORT }} \
+              -l "${{ secrets.PROD_SSH_USERNAME }}" \
+              ${{ secrets.PROD_SSH_HOST }} \
+              "echo '✅ SSH Connection OK!' && whoami && pwd"
+
+      - name: Cleanup SSH Key
+        if: always()    # ลบ key ทิ้งเสมอ แม้ step ก่อนหน้าจะ fail
+        run: rm -f ~/.ssh/deploy_key
