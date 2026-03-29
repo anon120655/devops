@@ -20,7 +20,6 @@ jobs:
       tomcat-webapps-path: '/opt/tomcat/webapps'               # ← path webapps ของ Tomcat บน UAT server
       deploy-staging-path: '/home/locus/deploy'                # ← path วาง WAR ชั่วคราวก่อน deploy บน UAT server
       tomcat-service-name: 'tomcat'                            # ← ชื่อ service ของ Tomcat
-      # health-url: 'https://uat-your-domain.com/api/health'   # ← (optional) URL สำหรับ health check UAT
       runs-on: 'self-hosted'
     secrets:
       SSH_PRIVATE_KEY: ${{ secrets.UAT_SSH_PRIVATE_KEY }}

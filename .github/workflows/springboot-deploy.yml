@@ -35,10 +35,7 @@ on:
         description: 'Tomcat service name (e.g., tomcat)'
         type: string
         default: 'tomcat'
-      health-url:
-        description: 'Health check URL (optional)'
-        type: string
-        default: ''
+
       runs-on:
         description: 'Runner to use'
         type: string
@@ -102,7 +99,30 @@ jobs:
           ssh-keyscan -p ${{ secrets.SSH_PORT || 22 }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
       # ─────────────────────────────────────────────────────────────
-      # 3. Copy WAR to server
+      # 3. Backup current deployment (thaihealth-eform-backend.war → ib_backup/YYYYMMDD)
+      # ─────────────────────────────────────────────────────────────
+      - name: Backup current deployment
+        env:
+          WAR_FILENAME: ${{ inputs.war-filename }}
+          STAGING_PATH: ${{ inputs.deploy-staging-path }}
+        run: |
+          echo "💾 Backing up current deployment..."
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              -p ${{ secrets.SSH_PORT || 22 }} \
+              -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "
+            BACKUP_DIR=\"${STAGING_PATH}/ib_backup/\$(date +%Y%m%d)\"
+            mkdir -p \"\$BACKUP_DIR\"
+            echo \"📂 Backup target: \$BACKUP_DIR\"
+
+            # copy เฉพาะไฟล์ WAR ที่ระบุ
+            [ -f \"${STAGING_PATH}/${WAR_FILENAME}\" ] && cp \"${STAGING_PATH}/${WAR_FILENAME}\" \"\$BACKUP_DIR/\" || echo \"⚠️ WAR file not found, skipping backup\"
+
+            echo \"✅ Backup completed → \$BACKUP_DIR\"
+          "
+
+      # ─────────────────────────────────────────────────────────────
+      # 4. Copy WAR to server
       # ─────────────────────────────────────────────────────────────
       - name: Copy WAR to server
         env:
@@ -123,11 +143,11 @@ jobs:
 
           # สร้าง staging directory บน server
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
-            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${STAGING_PATH}"
+            -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "mkdir -p ${STAGING_PATH}"
 
           # Copy WAR file ไป server
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT || 22 }} \
-            "$WAR_FILE" ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${STAGING_PATH}/${WAR_FILENAME}
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o "User=${{ secrets.SSH_USERNAME }}" -P ${{ secrets.SSH_PORT || 22 }} \
+            "$WAR_FILE" ${{ secrets.SSH_HOST }}:${STAGING_PATH}/${WAR_FILENAME}
 
           echo "✅ WAR copied to server"
 
@@ -147,7 +167,7 @@ jobs:
           APP_DIR="${WAR_FILENAME%.war}"
 
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
-            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
+            -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
             echo "🛑 Stopping Tomcat..."
             sudo service ${TOMCAT_SERVICE} stop || sudo systemctl stop ${TOMCAT_SERVICE} || true
 
@@ -164,26 +184,6 @@ jobs:
             echo "✅ Deploy completed"
           DEPLOY_SCRIPT
 
-      # ─────────────────────────────────────────────────────────────
-      # 5. Health Check (optional)
-      # ─────────────────────────────────────────────────────────────
-      - name: Health check
-        if: inputs.health-url != ''
-        run: |
-          echo "🩺 Waiting for Tomcat to start..."
-          sleep 30
-
-          for i in {1..5}; do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ inputs.health-url }}" || echo "000")
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Health check passed (HTTP $HTTP_CODE)"
-              exit 0
-            fi
-            echo "⏳ Attempt $i: HTTP $HTTP_CODE, retrying in 15s..."
-            sleep 15
-          done
-
-          echo "⚠️ Health check could not reach ${{ inputs.health-url }}"
 
       # ─────────────────────────────────────────────────────────────
       # 6. Cleanup
