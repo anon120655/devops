@@ -8,8 +8,8 @@ name: Deploy to PRODUCTION
 on:
   push:
     tags: ['v*']                # ← trigger เมื่อสร้าง tag เท่านั้น เช่น v1.0.0
-  schedule:
-    - cron: '30 16 * * *'      # ← 23:30 Bangkok (UTC+7 = 16:30 UTC) ทุกวัน
+  # schedule:
+  #   - cron: '30 16 * * *'    # ← 23:30 Bangkok (UTC+7 = 16:30 UTC) ทุกวัน
   workflow_dispatch:            # ← หรือ กดรันเอง (เผื่อฉุกเฉิน)
 
 jobs:
