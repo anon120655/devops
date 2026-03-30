@@ -1,12 +1,12 @@
-# 🚀 CI/CD Templates (Reusable Workflows)
+# CI/CD Templates (Reusable Workflows)
 
 ระบบ CI/CD กลางสำหรับองค์กร — แก้ไขที่เดียว ทุก project อัพเดตตาม!
 
-> ✅ **Organization**: ตั้งค่าเป็น `anon120655` แล้ว
+> **Organization**: ตั้งค่าเป็น `anon120655` แล้ว
 
 ---
 
-## ⚡ Quick Install
+## Quick Install
 
 ### Linux / Mac
 
@@ -28,20 +28,20 @@ Remove-Item -Recurse -Force C:\tmp\cicd -ErrorAction SilentlyContinue; git clone
 Remove-Item -Recurse -Force C:\tmp\cicd -ErrorAction SilentlyContinue; git clone git@github.com:anon120655/devops.git C:\tmp\cicd; & "C:\Program Files\Git\bin\bash.exe" C:\tmp\cicd\install.sh springboot; Remove-Item -Recurse -Force C:\tmp\cicd
 ```
 
-> 💡 **หมายเหตุ**: Windows ต้องมี [Git for Windows](https://git-scm.com/download/win) ติดตั้งอยู่ (ใช้ `bash.exe` ที่มาพร้อม Git)
+> **หมายเหตุ**: Windows ต้องมี [Git for Windows](https://git-scm.com/download/win) ติดตั้งอยู่ (ใช้ `bash.exe` ที่มาพร้อม Git)
 
 ---
 
-## 📂 Available Templates
+## Available Templates
 
 | Framework | CI | Deploy |
 |-----------|-----|--------|
 | **Angular** | Lint, Build | SSH + Static Files (rsync) |
-| **Spring Boot** | Maven/Gradle Build, Test | SSH + WAR/Tomcat |
+| **Spring Boot** | Maven Build | SSH + WAR/Tomcat |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### Reusable Workflows (workflow_call)
 
@@ -54,34 +54,37 @@ devops/.github/workflows/          ← Reusable templates (แก้ที่น
 ├── springboot-ci.yml
 └── springboot-deploy.yml
 
-your-project/.github/workflows/   ← Caller workflows (สั้นมาก ~15-25 บรรทัด)
+your-project/.github/workflows/   ← Caller workflows (สั้นมาก ~15-30 บรรทัด)
 ├── ci.yml                         เรียกใช้ reusable template
-├── deploy-uat.yml                 สำหรับ Deploy ขึ้น UAT
-└── deploy-prod.yml                สำหรับ Deploy ขึ้น Production
+├── deploy-uat.yml                 สำหรับ Deploy ขึ้น UAT (workflow_dispatch)
+├── deploy-prod.yml                สำหรับ Deploy ขึ้น Production (tag v*)
+└── test-ssh.yml                   ทดสอบ SSH ก่อน Deploy จริง (ลบได้หลังทดสอบสำเร็จ)
 ```
 
 ### ตัวอย่าง Caller Workflow (สิ่งที่ติดตั้งใน project)
 
 ```yaml
-# ci.yml - เพียง 15 บรรทัด!
+# ci.yml
 name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master]
   pull_request:
-    branches: [main, develop]
+    branches: [master]
 
 jobs:
   quality:
     uses: anon120655/devops/.github/workflows/angular-ci.yml@main
     with:
       node-version: '16'
+      angular-build-configuration: 'production'
+      runs-on: 'self-hosted'
 ```
 
 ---
 
-## 🔧 Setup Guide
+## Setup Guide
 
 ### 1. ติดตั้ง Template
 
@@ -98,7 +101,7 @@ git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh
 jobs:
   quality:
     uses: anon120655/devops/.github/workflows/angular-ci.yml@main
-    #     ^^^^^^^^ แก้ตรงนี้
+    #     ^^^^^^^^ แก้ตรงนี้ถ้า org ไม่ใช่ anon120655
 ```
 
 ### 3. แก้ไขไฟล์ Deploy (deploy-uat.yml, deploy-prod.yml)
@@ -117,22 +120,26 @@ with:
 
 ```yaml
 with:
-  war-filename: 'thaihealth-eform-backend.war'  # ← ชื่อไฟล์ WAR
-  tomcat-webapps-path: '/opt/tomcat/webapps'    # ← path webapps
-  deploy-staging-path: '/home/locus/deploy'     # ← path วาง WAR ชั่วคราว
-  tomcat-service-name: 'tomcat'                 # ← ชื่อ service
+  maven-profile: 'prod'                            # ← Maven profile (prod, uat, dev)
+  war-filename: 'thaihealth-eform-backend.war'      # ← ชื่อไฟล์ WAR
+  tomcat-webapps-path: '/opt/tomcat/webapps'        # ← path webapps
+  deploy-staging-path: '/home/locus/deploy'         # ← path วาง WAR ชั่วคราว
+  tomcat-service-name: 'tomcat'                     # ← ชื่อ service
 ```
 
 ### 4. เพิ่ม GitHub Secrets
 
 ไปที่ **Settings > Secrets and variables > Actions** ของ project repo และเพิ่ม:
 
-| Secret | Description |
-|--------|-------------|
-| `SSH_PRIVATE_KEY` | Private key สำหรับ SSH (ต้องมีบรรทัด BEGIN/END) |
-| `SSH_HOST` | Server IP/hostname (เช่น 10.10.1.28) |
-| `SSH_USERNAME` | Username บน server (เช่น locus) |
-| `SSH_PORT` | Port (default: 22, ไม่ต้องตั้งถ้าใช้ 22) |
+Secrets ต้องแยก **UAT** กับ **PROD** โดยใช้ prefix ตาม environment:
+
+| Secret (UAT) | Secret (PROD) | Description |
+|---------------|---------------|-------------|
+| `UAT_SSH_PRIVATE_KEY` | `PROD_SSH_PRIVATE_KEY` | Private key สำหรับ SSH (ต้องมีบรรทัด BEGIN/END) |
+| `UAT_SSH_HOST` | `PROD_SSH_HOST` | Server IP/hostname (เช่น 10.10.1.28) |
+| `UAT_SSH_USERNAME` | `PROD_SSH_USERNAME` | Username บน server (เช่น locus) |
+| `UAT_SSH_PORT` | `PROD_SSH_PORT` | Port SSH (default: 22) |
+| `UAT_SU_PASSWORD` | `PROD_SU_PASSWORD` | รหัสผ่าน su สำหรับ deploy ด้วยสิทธิ์ root |
 
 ### 5. ตั้งค่า Permissions (สำคัญ!)
 
@@ -163,48 +170,62 @@ sudo ./svc.sh install
 sudo ./svc.sh start
 ```
 
-### 7. Push และทดสอบ
+### 7. ทดสอบ SSH ก่อน Deploy
+
+ใช้ `test-ssh.yml` ที่ติดตั้งมาพร้อมกัน:
+
+1. ไปที่ **Actions** tab ของ project repo
+2. เลือก **Test SSH Connection**
+3. กด **Run workflow**
+4. ถ้า SSH ผ่านแล้ว ลบไฟล์ `test-ssh.yml` ออกได้
+
+### 8. Push และ Deploy
 
 ```bash
-# CI จะ trigger ทุกครั้งที่ push
+# CI จะ trigger ทุกครั้งที่ push ไป master
 git add .github/
 git commit -m "Add CI/CD workflows"
 git push
 
-# Deploy จะ trigger เมื่อสร้าง tag
+# Deploy UAT → กดปุ่ม "Run workflow" ในหน้า Actions (workflow_dispatch)
+
+# Deploy PROD → สร้าง tag
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
 ---
 
-## 📁 Folder Structure
+## Folder Structure
 
 ```
 devops/
 ├── .github/workflows/              # Reusable templates (workflow_call)
 │   ├── angular-ci.yml              #   Angular: lint + build
 │   ├── angular-deploy.yml          #   Angular: build + rsync ไป server
-│   ├── springboot-ci.yml           #   Spring Boot: build + test
+│   ├── springboot-ci.yml           #   Spring Boot: maven build
 │   └── springboot-deploy.yml       #   Spring Boot: build WAR + deploy Tomcat
 ├── examples/                       # Caller workflow examples
 │   ├── angular/.github/workflows/
 │   │   ├── ci.yml
 │   │   ├── deploy-uat.yml
-│   │   └── deploy-prod.yml
+│   │   ├── deploy-prod.yml
+│   │   └── test-ssh.yml
 │   └── springboot/.github/workflows/
 │       ├── ci.yml
 │       ├── deploy-uat.yml
-│       └── deploy-prod.yml
+│       ├── deploy-prod.yml
+│       └── test-ssh.yml
 ├── install.sh                      # Installer script
 └── README.md                       # คู่มือนี้
 ```
 
 ---
 
-## 📊 Inputs Reference
+## Inputs Reference
 
 ### angular-ci.yml
+
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `node-version` | string | `'16'` | Node.js version |
@@ -212,59 +233,94 @@ devops/
 | `runs-on` | string | `'self-hosted'` | Runner |
 
 ### angular-deploy.yml
-| Input | Type | Required | Description |
-|-------|------|----------|-------------|
-| `deploy-path` | string | ✅ | Path บน server สำหรับวาง static files |
-| `node-version` | string | | Node.js version (default: 16) |
-| `angular-build-configuration` | string | | Build config: uat, production |
-| `prebuild-script` | string | | Script ก่อน build (เช่น npm run prebuild.uat) |
-| `dist-subfolder` | string | | Subfolder ใน dist/ (ดูจาก angular.json) |
-| `health-url` | string | | Health check URL (optional) |
-| `runs-on` | string | | Runner (default: self-hosted) |
+
+| Input | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `deploy-path` | string | **required** | — | Path บน server สำหรับวาง static files |
+| `node-version` | string | | `'16'` | Node.js version |
+| `angular-build-configuration` | string | | `'production'` | Build config: uat, production |
+| `prebuild-script` | string | | `''` | Script ก่อน build (เช่น npm run prebuild.uat) |
+| `dist-subfolder` | string | | `''` | Subfolder ใน dist/ (ดูจาก angular.json) |
+| `runs-on` | string | | `'self-hosted'` | Runner |
 
 ### springboot-ci.yml
+
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `java-version` | string | `'17'` | Java version |
 | `java-distribution` | string | `'temurin'` | Java distribution |
-| `build-tool` | string | `'maven'` | Build tool: maven or gradle |
+| `maven-profile` | string | `'prod'` | Maven profile (e.g., prod, uat, dev) |
 | `runs-on` | string | `'self-hosted'` | Runner |
 
 ### springboot-deploy.yml
-| Input | Type | Required | Description |
-|-------|------|----------|-------------|
-| `war-filename` | string | ✅ | ชื่อไฟล์ WAR (e.g., app-backend.war) |
-| `java-version` | string | | Java version (default: 17) |
-| `build-tool` | string | | Build tool: maven or gradle |
-| `tomcat-webapps-path` | string | | Tomcat webapps path (default: /opt/tomcat/webapps) |
-| `deploy-staging-path` | string | | Path วาง WAR ชั่วคราว (default: /home/locus/deploy) |
-| `tomcat-service-name` | string | | ชื่อ Tomcat service (default: tomcat) |
-| `health-url` | string | | Health check URL (optional) |
-| `runs-on` | string | | Runner (default: self-hosted) |
 
-### Secrets (ใช้ร่วมกันทั้ง Angular และ Spring Boot)
+| Input | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `war-filename` | string | **required** | — | ชื่อไฟล์ WAR (e.g., app-backend.war) |
+| `java-version` | string | | `'17'` | Java version |
+| `java-distribution` | string | | `'temurin'` | Java distribution |
+| `maven-profile` | string | | `'prod'` | Maven profile (e.g., prod, uat, dev) |
+| `tomcat-webapps-path` | string | | `'/opt/tomcat/webapps'` | Tomcat webapps path |
+| `deploy-staging-path` | string | | `'/home/locus/deploy'` | Path วาง WAR ชั่วคราว |
+| `tomcat-service-name` | string | | `'tomcat'` | ชื่อ Tomcat service |
+| `runs-on` | string | | `'self-hosted'` | Runner |
+
+### Secrets (ใช้ร่วมกันทั้ง Angular และ Spring Boot Deploy)
+
 | Secret | Required | Description |
 |--------|----------|-------------|
-| `SSH_PRIVATE_KEY` | ✅ | Private key สำหรับ SSH |
-| `SSH_HOST` | ✅ | Server IP/hostname |
-| `SSH_USERNAME` | ✅ | Username บน server |
+| `SSH_PRIVATE_KEY` | **required** | Private key สำหรับ SSH |
+| `SSH_HOST` | **required** | Server IP/hostname |
+| `SSH_USERNAME` | **required** | Username บน server |
 | `SSH_PORT` | | Port SSH (default: 22) |
+| `SU_PASSWORD` | **required** | รหัสผ่าน su สำหรับ deploy ด้วยสิทธิ์ root |
+
+> **หมายเหตุ**: ใน caller workflow ให้ใช้ prefix `UAT_` หรือ `PROD_` เช่น `${{ secrets.UAT_SSH_HOST }}` / `${{ secrets.PROD_SSH_HOST }}`
 
 ---
 
-## 🏆 Benefits
+## Deploy Flow
+
+### Angular
+
+```
+Checkout → Setup Node.js → npm ci → Prebuild (optional) → ng build
+→ Setup SSH → Backup เว็บเดิม → rsync ไป /tmp → su deploy ไป target path → Cleanup
+```
+
+### Spring Boot
+
+```
+Checkout → Setup Java → mvnw clean package → Setup SSH
+→ Backup WAR เดิม → scp WAR ไป /tmp → su ย้ายไป staging
+→ su stop Tomcat → replace WAR → start Tomcat → Cleanup
+```
+
+---
+
+## Benefits
 
 1. **Single Source of Truth**: แก้ปัญหา/เพิ่มฟีเจอร์ที่เดียว ทุก project อัพเดตตาม
-2. **Cleaner Repositories**: ไฟล์ workflow ในแต่ละ project สั้นมาก (~15-25 บรรทัด)
-3. **Governance**: ควบคุมมาตรฐาน CI/CD ทั้งองค์กรได้เป๊ะ
+2. **Cleaner Repositories**: ไฟล์ workflow ในแต่ละ project สั้นมาก (~15-30 บรรทัด)
+3. **Governance**: ควบคุมมาตรฐาน CI/CD ทั้งองค์กรได้
 4. **Easy Onboarding**: project ใหม่แค่รัน install.sh เสร็จภายใน 5 นาที
+5. **Automatic Backup**: ทั้ง Angular และ Spring Boot จะ backup ของเดิมก่อน deploy ทุกครั้ง
 
 ---
 
-## 📝 Changelog
+## Changelog
 
-- **2026-03-12**: 🎉 Initial release
-  - ✅ angular-ci.yml / angular-deploy.yml (SSH + Static Files)
-  - ✅ springboot-ci.yml / springboot-deploy.yml (SSH + WAR/Tomcat)
-  - ✅ Installer script (install.sh)
-  - ✅ Example caller workflows
+- **2026-03-30**: ปรับปรุง README ให้ตรงกับ workflow ปัจจุบัน
+  - แก้ Inputs Reference ให้ตรงกับ YAML จริง (`maven-profile` แทน `build-tool`, ลบ `health-url` ที่ไม่มี)
+  - เพิ่ม `SU_PASSWORD` secret ที่ขาดหายไป
+  - เพิ่ม `test-ssh.yml` ใน folder structure และ setup guide
+  - เพิ่มตาราง secrets แยก UAT/PROD prefix
+  - เพิ่ม Deploy Flow diagram
+  - ปรับ branch ใน example จาก `main/develop` เป็น `master` ตามจริง
+  - ปรับ deploy trigger: UAT = workflow_dispatch, PROD = tag + workflow_dispatch
+
+- **2026-03-12**: Initial release
+  - angular-ci.yml / angular-deploy.yml (SSH + Static Files)
+  - springboot-ci.yml / springboot-deploy.yml (SSH + WAR/Tomcat)
+  - Installer script (install.sh)
+  - Example caller workflows
