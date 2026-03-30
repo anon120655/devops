@@ -89,6 +89,8 @@ jobs:
       # ─────────────────────────────────────────────────────────────
       - name: Run prebuild script
         if: inputs.prebuild-script != ''
+        env:
+          TZ: Asia/Bangkok # ⏰ กำหนด Time Zone พื้นฐานของ Step นี้เป็นประเทศไทย (UTC+7) แก้ปัญหาเวลาห่าง 7 ชั่วโมง
         run: |
           echo "🔧 Running prebuild: ${{ inputs.prebuild-script }}"
           ${{ inputs.prebuild-script }}
