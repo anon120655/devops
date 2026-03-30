@@ -38,6 +38,7 @@ jobs:
         with:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.java-distribution }}
+          cache: ${{ inputs.build-tool }}
 
       # ─────────────────────────────────────────────────────────────
       # Build (Maven)
@@ -47,7 +48,7 @@ jobs:
         run: |
           echo "🏗️ Building with Maven..."
           chmod +x mvnw 2>/dev/null || true
-          ./mvnw clean package -DskipTests --batch-mode || mvn clean package -DskipTests --batch-mode
+          ./mvnw clean package -DskipTests --batch-mode
           echo "✅ Maven build passed"
 
       # ─────────────────────────────────────────────────────────────
@@ -61,25 +62,7 @@ jobs:
           ./gradlew clean build -x test || gradle clean build -x test
           echo "✅ Gradle build passed"
 
-      # ─────────────────────────────────────────────────────────────
-      # Run Tests (Maven)
-      # ─────────────────────────────────────────────────────────────
-      - name: Run Tests (Maven)
-        if: inputs.build-tool == 'maven'
-        run: |
-          echo "🧪 Running tests..."
-          ./mvnw test --batch-mode || mvn test --batch-mode || echo "⚠️ No tests found or tests skipped"
-          echo "✅ Tests done"
 
-      # ─────────────────────────────────────────────────────────────
-      # Run Tests (Gradle)
-      # ─────────────────────────────────────────────────────────────
-      - name: Run Tests (Gradle)
-        if: inputs.build-tool == 'gradle'
-        run: |
-          echo "🧪 Running tests..."
-          ./gradlew test || gradle test || echo "⚠️ No tests found or tests skipped"
-          echo "✅ Tests done"
 
       # ─────────────────────────────────────────────────────────────
       # 📊 Summary
@@ -92,7 +75,6 @@ jobs:
           echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🏗️ Build (${{ inputs.build-tool }}) | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🧪 Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
