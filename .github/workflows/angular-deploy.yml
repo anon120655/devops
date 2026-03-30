@@ -45,6 +45,8 @@ on:
         required: true
       SSH_PORT:
         required: false
+      SU_PASSWORD:
+        required: false
 
 # concurrency: จัดการการทำงานซ้ำซ้อน หากมีการ deploy ซ้ำกัน จะให้รอ, ทำต่อ หรือยกเลิกอันเก่า
 concurrency:

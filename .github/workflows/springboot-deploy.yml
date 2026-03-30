@@ -50,6 +50,8 @@ on:
         required: true
       SSH_PORT:
         required: false
+      SU_PASSWORD:
+        required: false
 
 concurrency:
   group: deploy-springboot-${{ github.ref }}
