@@ -104,6 +104,7 @@ jobs:
           echo "💾 Backing up current deployment..."
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
+              -o LogLevel=ERROR \
               -p ${{ secrets.SSH_PORT || 22 }} \
               -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "
             BACKUP_DIR=\"${STAGING_PATH}/ib_backup/\$(date +%Y%m%d)\"
@@ -136,11 +137,11 @@ jobs:
           echo "📂 Found WAR: $WAR_FILE"
 
           # Copy WAR ไป /tmp บน server ก่อน (หลีกเลี่ยง Permission denied)
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o "User=${{ secrets.SSH_USERNAME }}" -P ${{ secrets.SSH_PORT || 22 }} \
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -o "User=${{ secrets.SSH_USERNAME }}" -P ${{ secrets.SSH_PORT || 22 }} \
             "$WAR_FILE" ${{ secrets.SSH_HOST }}:/tmp/${WAR_FILENAME}
 
           # ใช้ sudo (NOPASSWD) ย้ายไฟล์จาก /tmp ไป staging path
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << COPY_SCRIPT
           mkdir -p ${STAGING_PATH}
           sudo rsync /tmp/${WAR_FILENAME} ${STAGING_PATH}/${WAR_FILENAME}
@@ -164,7 +165,7 @@ jobs:
 
           APP_DIR="${WAR_FILENAME%.war}"
 
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
           echo "🛑 Stopping Tomcat..."
           sudo service ${TOMCAT_SERVICE} stop || sudo systemctl stop ${TOMCAT_SERVICE} || true

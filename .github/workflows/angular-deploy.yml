@@ -129,6 +129,7 @@ jobs:
           echo "💾 Backing up current deployment..."
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
+              -o LogLevel=ERROR \
               -p ${{ secrets.SSH_PORT || 22 }} \
               -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "
             set -e
@@ -166,11 +167,11 @@ jobs:
 
           # rsync ไป /tmp/angular-deploy ก่อน (หลีกเลี่ยง Permission denied กรณี folder owner เป็น root)
           rsync -az \
-            -e "ssh -i ~/.ssh/deploy_key -l '${{ secrets.SSH_USERNAME }}' -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }}" \
+            -e "ssh -i ~/.ssh/deploy_key -l '${{ secrets.SSH_USERNAME }}' -o StrictHostKeyChecking=no -o LogLevel=ERROR -p ${{ secrets.SSH_PORT || 22 }}" \
             "$SOURCE" ${{ secrets.SSH_HOST }}:/tmp/angular-deploy/
 
           # ใช้ sudo (NOPASSWD) deploy จาก /tmp ไป deploy path แล้ว chown กลับเป็น user เดิม
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
           sudo rsync -a --delete \
             --exclude='ib_backup/' \
