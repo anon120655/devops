@@ -127,6 +127,7 @@ jobs:
               -o StrictHostKeyChecking=no \
               -p ${{ secrets.SSH_PORT || 22 }} \
               -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "
+            set -e
             BACKUP_DIR=\"${DEPLOY_PATH}/ib_backup/\$(date +%Y%m%d)\"
             mkdir -p \"\$BACKUP_DIR\"
             echo \"📂 Backup target: \$BACKUP_DIR\"
@@ -161,7 +162,8 @@ jobs:
 
           # --delete: ลบไฟล์บน server ที่ไม่มีใน build ใหม่ (เช่น main.OLD.js) ให้อัตโนมัติ
           # --exclude: ยกเว้น folder เหล่านี้ไม่ให้ถูกลบ (ไม่ได้มาจาก build)
-          rsync -avz --delete \
+          # --no-perms --no-owner --no-group: ป้องกันปัญหา rsync พยายามจำลองสิทธิ์/User/Group จากฝั่ง GitHub Runner ไปทับ Server จนเกิด Permission denied
+          rsync -avz --delete --no-perms --no-owner --no-group \
             --exclude='ib_backup/' \
             --exclude='dr/' \
             --exclude='larngear_backup/' \
