@@ -70,8 +70,19 @@ jobs:
           node-version: ${{ inputs.node-version }}
           cache: 'npm' # cache npm packages เพื่อเพิ่มความเร็ว (ข้ามดาวน์โหลดซ้ำถ้า package-lock.json ไม่เปลี่ยน)
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Get dependencies
+        shell: bash
+        run: |
+          set -e
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f yarn.lock ]; then
+            corepack enable
+            yarn install --frozen-lockfile
+          else
+            echo "::error::ไม่พบ package-lock.json หรือ yarn.lock — ต้องมี lockfile อย่างใดอย่างหนึ่ง"
+            exit 1
+          fi
 
       # ─────────────────────────────────────────────────────────────
       # 1. Prebuild (optional) - เช่น ปรับวันที่
@@ -87,6 +98,8 @@ jobs:
       # 2. Build Angular
       # ─────────────────────────────────────────────────────────────
       - name: Build Angular
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           echo "🏗️ Building Angular (${{ inputs.angular-build-configuration }})..."
           npx ng build --configuration=${{ inputs.angular-build-configuration }}
