@@ -26,3 +26,4 @@ jobs:
       SSH_HOST: ${{ secrets.UAT_SSH_HOST }}                    # ← IP เครื่อง UAT
       SSH_USERNAME: ${{ secrets.UAT_SSH_USERNAME }}
       SSH_PORT: ${{ secrets.UAT_SSH_PORT }}
+      SU_PASSWORD: ${{ secrets.UAT_SU_PASSWORD }}
