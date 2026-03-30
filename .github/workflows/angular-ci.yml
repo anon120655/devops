@@ -61,6 +61,8 @@ jobs:
       # 2. Build Check - ตรวจว่า build ได้
       # ─────────────────────────────────────────────────────────────
       - name: Build Angular
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           echo "🏗️ Building Angular (${{ inputs.angular-build-configuration }})..."
           npx ng build --configuration=${{ inputs.angular-build-configuration }}
