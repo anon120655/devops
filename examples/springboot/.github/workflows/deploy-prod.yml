@@ -20,6 +20,7 @@ jobs:
     with:
       java-version: '17'                                       # ← ปรับตามที่ project ใช้
       build-tool: 'maven'                                      # ← 'maven' หรือ 'gradle'
+      maven-profile: 'prod'                                    # ← profile สำหรับ maven
       war-filename: 'thaihealth-eform-backend.war'             # ← ชื่อไฟล์ WAR ที่ build ออกมา
       tomcat-webapps-path: '/opt/tomcat/webapps'               # ← path webapps ของ Tomcat บน PROD server
       deploy-staging-path: '/home/locus/deploy'                # ← path วาง WAR ชั่วคราวก่อน deploy บน PROD server
