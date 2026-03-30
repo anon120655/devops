@@ -139,7 +139,7 @@ Secrets ต้องแยก **UAT** กับ **PROD** โดยใช้ pref
 | `UAT_SSH_HOST` | `PROD_SSH_HOST` | Server IP/hostname (เช่น 10.10.1.28) |
 | `UAT_SSH_USERNAME` | `PROD_SSH_USERNAME` | Username บน server (เช่น locus) |
 | `UAT_SSH_PORT` | `PROD_SSH_PORT` | Port SSH (default: 22) |
-| `UAT_SU_PASSWORD` | `PROD_SU_PASSWORD` | รหัสผ่าน su สำหรับ deploy ด้วยสิทธิ์ root |
+| | | **ไม่ต้องใช้ password** — ตั้ง sudoers NOPASSWD บน server แทน (ดู Server Setup) |
 
 ### 5. ตั้งค่า Permissions (สำคัญ!)
 
@@ -273,7 +273,7 @@ devops/
 | `SSH_HOST` | **required** | Server IP/hostname |
 | `SSH_USERNAME` | **required** | Username บน server |
 | `SSH_PORT` | | Port SSH (default: 22) |
-| `SU_PASSWORD` | **required** | รหัสผ่าน su สำหรับ deploy ด้วยสิทธิ์ root |
+| | | **ไม่ต้องใช้ password** — ตั้ง sudoers NOPASSWD บน server แทน |
 
 > **หมายเหตุ**: ใน caller workflow ให้ใช้ prefix `UAT_` หรือ `PROD_` เช่น `${{ secrets.UAT_SSH_HOST }}` / `${{ secrets.PROD_SSH_HOST }}`
 
@@ -312,7 +312,7 @@ Checkout → Setup Java → mvnw clean package → Setup SSH
 
 - **2026-03-30**: ปรับปรุง README ให้ตรงกับ workflow ปัจจุบัน
   - แก้ Inputs Reference ให้ตรงกับ YAML จริง (`maven-profile` แทน `build-tool`, ลบ `health-url` ที่ไม่มี)
-  - เพิ่ม `SU_PASSWORD` secret ที่ขาดหายไป
+  - เปลี่ยนจาก `SU_PASSWORD` เป็น sudoers NOPASSWD (ไม่ต้องส่ง password แล้ว)
   - เพิ่ม `test-ssh.yml` ใน folder structure และ setup guide
   - เพิ่มตาราง secrets แยก UAT/PROD prefix
   - เพิ่ม Deploy Flow diagram

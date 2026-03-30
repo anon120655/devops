@@ -27,4 +27,3 @@ jobs:
       SSH_HOST: ${{ secrets.PROD_SSH_HOST }}              # ← IP เครื่อง Production จริง
       SSH_USERNAME: ${{ secrets.PROD_SSH_USERNAME }}
       SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
-      SU_PASSWORD: ${{ secrets.PROD_SU_PASSWORD }}

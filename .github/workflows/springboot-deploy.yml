@@ -50,8 +50,6 @@ on:
         required: true
       SSH_PORT:
         required: false
-      SU_PASSWORD:
-        required: true
 
 concurrency:
   group: deploy-springboot-${{ github.ref }}
@@ -123,7 +121,6 @@ jobs:
         env:
           WAR_FILENAME: ${{ inputs.war-filename }}
           STAGING_PATH: ${{ inputs.deploy-staging-path }}
-          SU_PASSWORD: ${{ secrets.SU_PASSWORD }}
         run: |
           echo "📦 Copying WAR to server..."
 
@@ -140,15 +137,13 @@ jobs:
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o "User=${{ secrets.SSH_USERNAME }}" -P ${{ secrets.SSH_PORT || 22 }} \
             "$WAR_FILE" ${{ secrets.SSH_HOST }}:/tmp/${WAR_FILENAME}
 
-          # ใช้ sudo -S ย้ายไฟล์จาก /tmp ไป staging path ด้วยสิทธิ์ root
+          # ใช้ sudo (NOPASSWD) ย้ายไฟล์จาก /tmp ไป staging path
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << COPY_SCRIPT
-          echo "${SU_PASSWORD}" | sudo -S -E bash -c "\
-            mkdir -p ${STAGING_PATH}; \
-            cp /tmp/${WAR_FILENAME} ${STAGING_PATH}/${WAR_FILENAME}; \
-            rm -f /tmp/${WAR_FILENAME}; \
-            echo '✅ WAR file moved to staging'; \
-          "
+          mkdir -p ${STAGING_PATH}
+          sudo rsync /tmp/${WAR_FILENAME} ${STAGING_PATH}/${WAR_FILENAME}
+          sudo rm -f /tmp/${WAR_FILENAME}
+          echo "✅ WAR file moved to staging"
           COPY_SCRIPT
 
           echo "✅ WAR copied to server"
@@ -162,7 +157,6 @@ jobs:
           WEBAPPS_PATH: ${{ inputs.tomcat-webapps-path }}
           STAGING_PATH: ${{ inputs.deploy-staging-path }}
           TOMCAT_SERVICE: ${{ inputs.tomcat-service-name }}
-          SU_PASSWORD: ${{ secrets.SU_PASSWORD }}
         run: |
           echo "🚀 Deploying on server..."
 
@@ -170,15 +164,16 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
-          echo "${SU_PASSWORD}" | sudo -S -E bash -c "\
-            echo 'start deploy'; \
-            service ${TOMCAT_SERVICE} stop; \
-            rm -rf ${WEBAPPS_PATH}/${APP_DIR}; \
-            rm -rf ${WEBAPPS_PATH}/${WAR_FILENAME}; \
-            cp ${STAGING_PATH}/${WAR_FILENAME} ${WEBAPPS_PATH}/${WAR_FILENAME}; \
-            service ${TOMCAT_SERVICE} start; \
-            echo 'end deploy'; \
-          "
+          echo "🛑 Stopping Tomcat..."
+          sudo service ${TOMCAT_SERVICE} stop || sudo systemctl stop ${TOMCAT_SERVICE} || true
+          echo "🗑️ Removing old deployment..."
+          sudo rm -rf ${WEBAPPS_PATH}/${APP_DIR}
+          sudo rm -rf ${WEBAPPS_PATH}/${WAR_FILENAME}
+          echo "📦 Deploying new WAR..."
+          sudo rsync ${STAGING_PATH}/${WAR_FILENAME} ${WEBAPPS_PATH}/${WAR_FILENAME}
+          echo "▶️ Starting Tomcat..."
+          sudo service ${TOMCAT_SERVICE} start || sudo systemctl start ${TOMCAT_SERVICE}
+          echo "✅ Deploy completed"
           DEPLOY_SCRIPT
 
       # ─────────────────────────────────────────────────────────────
