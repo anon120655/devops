@@ -164,7 +164,8 @@ jobs:
           # --exclude: ยกเว้น folder เหล่านี้ไม่ให้ถูกลบ (ไม่ได้มาจาก build)
           # --no-perms --no-owner --no-group: ป้องกันปัญหา rsync พยายามจำลองสิทธิ์/User/Group จากฝั่ง GitHub Runner ไปทับ Server จนเกิด Permission denied
           # -O / --omit-dir-times: ป้องกัน Error "failed to set times" ใน Folder เดิมที่ไม่ได้ถูกสร้างโดย User นี้
-          rsync -avz --delete --no-perms --no-owner --no-group -O \
+          # (ลบ flag -v ออกจาก -avz เพื่อไม่ให้พ่นรายชื่อไฟล์เป็นร้อยบรรทัดรกหน้าจอ)
+          rsync -az --delete --no-perms --no-owner --no-group -O \
             --exclude='ib_backup/' \
             --exclude='dr/' \
             --exclude='larngear_backup/' \
