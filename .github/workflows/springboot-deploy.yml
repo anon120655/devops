@@ -8,42 +8,39 @@ on:
   workflow_call:
     inputs:
       java-version:
-        description: 'Java version'
+        description: "Java version"
         type: string
-        default: '17'
+        default: "17"
       java-distribution:
-        description: 'Java distribution'
+        description: "Java distribution"
         type: string
-        default: 'temurin'
-      build-tool:
-        description: 'Build tool: maven or gradle'
-        type: string
-        default: 'maven'
+        default: "temurin"
+
       maven-profile:
-        description: 'Maven profile (e.g., prod, uat, dev)'
+        description: "Maven profile (e.g., prod, uat, dev)"
         type: string
-        default: 'prod'
+        default: "prod"
       war-filename:
-        description: 'WAR filename (e.g., thaihealth-eform-backend.war)'
+        description: "WAR filename (e.g., thaihealth-eform-backend.war)"
         type: string
         required: true
       tomcat-webapps-path:
-        description: 'Tomcat webapps path (e.g., /opt/tomcat/webapps)'
+        description: "Tomcat webapps path (e.g., /opt/tomcat/webapps)"
         type: string
-        default: '/opt/tomcat/webapps'
+        default: "/opt/tomcat/webapps"
       deploy-staging-path:
-        description: 'Staging path for WAR file on server (e.g., /home/locus/deploy)'
+        description: "Staging path for WAR file on server (e.g., /home/locus/deploy)"
         type: string
-        default: '/home/locus/deploy'
+        default: "/home/locus/deploy"
       tomcat-service-name:
-        description: 'Tomcat service name (e.g., tomcat)'
+        description: "Tomcat service name (e.g., tomcat)"
         type: string
-        default: 'tomcat'
+        default: "tomcat"
 
       runs-on:
-        description: 'Runner to use'
+        description: "Runner to use"
         type: string
-        default: 'self-hosted'
+        default: "self-hosted"
     secrets:
       SSH_PRIVATE_KEY:
         required: true
@@ -53,6 +50,8 @@ on:
         required: true
       SSH_PORT:
         required: false
+      SU_PASSWORD:
+        required: true
 
 concurrency:
   group: deploy-springboot-${{ github.ref }}
@@ -72,25 +71,16 @@ jobs:
         with:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.java-distribution }}
-          cache: ${{ inputs.build-tool }}
+          cache: "maven"
 
       # ─────────────────────────────────────────────────────────────
       # 1. Build WAR file
       # ─────────────────────────────────────────────────────────────
       - name: Build WAR (Maven)
-        if: inputs.build-tool == 'maven'
         run: |
           echo "🏗️ Building WAR with Maven (Profile: ${{ inputs.maven-profile }})..."
           chmod +x mvnw 2>/dev/null || true
           ./mvnw clean package -DskipTests -P${{ inputs.maven-profile }} --batch-mode
-          echo "✅ WAR build completed"
-
-      - name: Build WAR (Gradle)
-        if: inputs.build-tool == 'gradle'
-        run: |
-          echo "🏗️ Building WAR with Gradle..."
-          chmod +x gradlew 2>/dev/null || true
-          ./gradlew clean bootWar -x test || gradle clean bootWar -x test
           echo "✅ WAR build completed"
 
       # ─────────────────────────────────────────────────────────────
@@ -133,11 +123,11 @@ jobs:
         env:
           WAR_FILENAME: ${{ inputs.war-filename }}
           STAGING_PATH: ${{ inputs.deploy-staging-path }}
+          SU_PASSWORD: ${{ secrets.SU_PASSWORD }}
         run: |
           echo "📦 Copying WAR to server..."
 
-          # ค้นหา WAR file
-          WAR_FILE=$(find . -name "*.war" -path "*/target/*" -o -name "*.war" -path "*/build/libs/*" | head -1)
+          WAR_FILE=$(find . -name "*.war" -path "*/target/*" | head -1)
 
           if [ -z "$WAR_FILE" ]; then
             echo "❌ WAR file not found!"
@@ -146,13 +136,20 @@ jobs:
 
           echo "📂 Found WAR: $WAR_FILE"
 
-          # สร้าง staging directory บน server
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
-            -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "mkdir -p ${STAGING_PATH}"
-
-          # Copy WAR file ไป server
+          # Copy WAR ไป /tmp บน server ก่อน (หลีกเลี่ยง Permission denied)
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o "User=${{ secrets.SSH_USERNAME }}" -P ${{ secrets.SSH_PORT || 22 }} \
-            "$WAR_FILE" ${{ secrets.SSH_HOST }}:${STAGING_PATH}/${WAR_FILENAME}
+            "$WAR_FILE" ${{ secrets.SSH_HOST }}:/tmp/${WAR_FILENAME}
+
+          # ใช้ su - ย้ายไฟล์จาก /tmp ไป staging path ด้วยสิทธิ์ root
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
+            -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << COPY_SCRIPT
+          echo "${SU_PASSWORD}" | su - -c "\
+            mkdir -p ${STAGING_PATH}; \
+            cp /tmp/${WAR_FILENAME} ${STAGING_PATH}/${WAR_FILENAME}; \
+            rm -f /tmp/${WAR_FILENAME}; \
+            echo '✅ WAR file moved to staging'; \
+          "
+          COPY_SCRIPT
 
           echo "✅ WAR copied to server"
 
@@ -165,30 +162,24 @@ jobs:
           WEBAPPS_PATH: ${{ inputs.tomcat-webapps-path }}
           STAGING_PATH: ${{ inputs.deploy-staging-path }}
           TOMCAT_SERVICE: ${{ inputs.tomcat-service-name }}
+          SU_PASSWORD: ${{ secrets.SU_PASSWORD }}
         run: |
           echo "🚀 Deploying on server..."
 
-          # ดึงชื่อ app (ตัด .war ออก)
           APP_DIR="${WAR_FILENAME%.war}"
 
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
-            echo "🛑 Stopping Tomcat..."
-            sudo service ${TOMCAT_SERVICE} stop || sudo systemctl stop ${TOMCAT_SERVICE} || true
-
-            echo "🗑️ Removing old deployment..."
-            sudo rm -rf ${WEBAPPS_PATH}/${APP_DIR}
-            sudo rm -rf ${WEBAPPS_PATH}/${WAR_FILENAME}
-
-            echo "📦 Deploying new WAR..."
-            sudo cp ${STAGING_PATH}/${WAR_FILENAME} ${WEBAPPS_PATH}/${WAR_FILENAME}
-
-            echo "▶️ Starting Tomcat..."
-            sudo service ${TOMCAT_SERVICE} start || sudo systemctl start ${TOMCAT_SERVICE}
-
-            echo "✅ Deploy completed"
+          echo "${SU_PASSWORD}" | su - -c "\
+            echo 'start deploy'; \
+            service ${TOMCAT_SERVICE} stop; \
+            rm -rf ${WEBAPPS_PATH}/${APP_DIR}; \
+            rm -rf ${WEBAPPS_PATH}/${WAR_FILENAME}; \
+            cp ${STAGING_PATH}/${WAR_FILENAME} ${WEBAPPS_PATH}/${WAR_FILENAME}; \
+            service ${TOMCAT_SERVICE} start; \
+            echo '✅ Deploy completed'; \
+          "
           DEPLOY_SCRIPT
-
 
       # ─────────────────────────────────────────────────────────────
       # 6. Cleanup

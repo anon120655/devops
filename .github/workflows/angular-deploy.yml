@@ -45,6 +45,8 @@ on:
         required: true
       SSH_PORT:
         required: false
+      SU_PASSWORD:
+        required: true
 
 # concurrency: จัดการการทำงานซ้ำซ้อน หากมีการ deploy ซ้ำกัน จะให้รอ, ทำต่อ หรือยกเลิกอันเก่า
 concurrency:
@@ -150,10 +152,11 @@ jobs:
         env:
           DEPLOY_PATH: ${{ inputs.deploy-path }}
           DIST_SUB: ${{ inputs.dist-subfolder }}
+          SU_PASSWORD: ${{ secrets.SU_PASSWORD }}
+          SSH_USER: ${{ secrets.SSH_USERNAME }}
         run: |
           echo "📦 Deploying Angular build to server..."
 
-          # กำหนด source path
           if [ -n "$DIST_SUB" ]; then
             SOURCE="dist/${DIST_SUB}/"
           else
@@ -162,20 +165,28 @@ jobs:
 
           echo "📂 Source: $SOURCE → $DEPLOY_PATH"
 
-          # --delete: ลบไฟล์บน server ที่ไม่มีใน build ใหม่ (เช่น main.OLD.js) ให้อัตโนมัติ
-          # --exclude: ยกเว้น folder เหล่านี้ไม่ให้ถูกลบ (ไม่ได้มาจาก build)
-          # --no-perms --no-owner --no-group: ป้องกันปัญหา rsync พยายามจำลองสิทธิ์/User/Group จากฝั่ง GitHub Runner ไปทับ Server จนเกิด Permission denied
-          # -O / --omit-dir-times: ป้องกัน Error "failed to set times" ใน Folder เดิมที่ไม่ได้ถูกสร้างโดย User นี้
-          # (ลบ flag -v ออกจาก -avz เพื่อไม่ให้พ่นรายชื่อไฟล์เป็นร้อยบรรทัดรกหน้าจอ)
-          rsync -az --delete --no-perms --no-owner --no-group -O \
-            --exclude='ib_backup/' \
-            --exclude='dr/' \
-            --exclude='larngear_backup/' \
-            --exclude='pre-deploy/' \
-            --exclude='selfservice/' \
-            --exclude='00_backup_อย่าลบ/' \
+          # rsync ไป /tmp/angular-deploy ก่อน (หลีกเลี่ยง Permission denied กรณี folder owner เป็น root)
+          rsync -az \
             -e "ssh -i ~/.ssh/deploy_key -l '${{ secrets.SSH_USERNAME }}' -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }}" \
-            "$SOURCE" ${{ secrets.SSH_HOST }}:$DEPLOY_PATH/
+            "$SOURCE" ${{ secrets.SSH_HOST }}:/tmp/angular-deploy/
+
+          # ใช้ su - deploy จาก /tmp ไป deploy path ด้วยสิทธิ์ root แล้ว chown กลับเป็น user เดิม
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
+            -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
+          echo "${SU_PASSWORD}" | su - -c "\
+            rsync -a --delete \
+              --exclude='ib_backup/' \
+              --exclude='dr/' \
+              --exclude='larngear_backup/' \
+              --exclude='pre-deploy/' \
+              --exclude='selfservice/' \
+              --exclude='00_backup_อย่าลบ/' \
+              /tmp/angular-deploy/ ${DEPLOY_PATH}/; \
+            chown -R ${SSH_USER}:${SSH_USER} ${DEPLOY_PATH}; \
+            rm -rf /tmp/angular-deploy; \
+            echo '✅ Deploy completed'; \
+          "
+          DEPLOY_SCRIPT
 
           echo "✅ Deploy completed"
 

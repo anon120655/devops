@@ -17,6 +17,5 @@ jobs:
     uses: anon120655/devops/.github/workflows/springboot-ci.yml@main
     with:
       java-version: '17'              # ← ปรับตามที่ project ใช้ (8, 11, 17, 21)
-      build-tool: 'maven'             # ← 'maven' หรือ 'gradle'
       maven-profile: 'prod'           # ← profile สำหรับ maven
       runs-on: 'self-hosted'

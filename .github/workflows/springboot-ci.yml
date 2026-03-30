@@ -15,10 +15,7 @@ on:
         description: 'Java distribution (temurin, corretto, zulu, etc.)'
         type: string
         default: 'temurin'
-      build-tool:
-        description: 'Build tool: maven or gradle'
-        type: string
-        default: 'maven'
+
       maven-profile:
         description: 'Maven profile (e.g., prod, uat, dev)'
         type: string
@@ -42,31 +39,17 @@ jobs:
         with:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.java-distribution }}
-          cache: ${{ inputs.build-tool }}
+          cache: 'maven'
 
       # ─────────────────────────────────────────────────────────────
       # Build (Maven)
       # ─────────────────────────────────────────────────────────────
       - name: Build with Maven
-        if: inputs.build-tool == 'maven'
         run: |
           echo "🏗️ Building with Maven (Profile: ${{ inputs.maven-profile }})..."
           chmod +x mvnw 2>/dev/null || true
           ./mvnw clean package -DskipTests -P${{ inputs.maven-profile }} --batch-mode
           echo "✅ Maven build passed"
-
-      # ─────────────────────────────────────────────────────────────
-      # Build (Gradle)
-      # ─────────────────────────────────────────────────────────────
-      - name: Build with Gradle
-        if: inputs.build-tool == 'gradle'
-        run: |
-          echo "🏗️ Building with Gradle..."
-          chmod +x gradlew 2>/dev/null || true
-          ./gradlew clean build -x test || gradle clean build -x test
-          echo "✅ Gradle build passed"
-
-
 
       # ─────────────────────────────────────────────────────────────
       # 📊 Summary
@@ -78,13 +61,13 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🏗️ Build (${{ inputs.build-tool }}) | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏗️ Build (Maven) | ✅ |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Info | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Java** | ${{ inputs.java-version }} (${{ inputs.java-distribution }}) |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Build Tool** | ${{ inputs.build-tool }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Build Tool** | Maven |" >> $GITHUB_STEP_SUMMARY
           echo "| **Branch** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY

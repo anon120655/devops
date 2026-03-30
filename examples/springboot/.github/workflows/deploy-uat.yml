@@ -15,7 +15,6 @@ jobs:
     uses: anon120655/devops/.github/workflows/springboot-deploy.yml@main
     with:
       java-version: '17'                                       # ← ปรับตามที่ project ใช้
-      build-tool: 'maven'                                      # ← 'maven' หรือ 'gradle'
       maven-profile: 'uat'                                     # ← profile สำหรับ maven
       war-filename: 'thaihealth-eform-backend.war'             # ← ชื่อไฟล์ WAR ที่ build ออกมา
       tomcat-webapps-path: '/opt/tomcat/webapps'               # ← path webapps ของ Tomcat บน UAT server
