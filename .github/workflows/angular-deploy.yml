@@ -171,21 +171,11 @@ jobs:
             "$SOURCE" ${{ secrets.SSH_HOST }}:/tmp/angular-deploy/
 
           # ใช้ su - deploy จาก /tmp ไป deploy path ด้วยสิทธิ์ root แล้ว chown กลับเป็น user เดิม
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
+          # -tt บังคับจัดสรร PTY ให้ su อ่าน password ได้ (password ส่งเป็นบรรทัดถัดไปผ่าน terminal)
+          ssh -tt -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
-          echo "${SU_PASSWORD}" | su - -c "\
-            rsync -a --delete \
-              --exclude='ib_backup/' \
-              --exclude='dr/' \
-              --exclude='larngear_backup/' \
-              --exclude='pre-deploy/' \
-              --exclude='selfservice/' \
-              --exclude='00_backup_อย่าลบ/' \
-              /tmp/angular-deploy/ ${DEPLOY_PATH}/; \
-            chown -R ${SSH_USER}:${SSH_USER} ${DEPLOY_PATH}; \
-            rm -rf /tmp/angular-deploy; \
-            echo '✅ Deploy completed'; \
-          "
+          su - -c "rsync -a --delete --exclude=ib_backup/ --exclude=dr/ --exclude=larngear_backup/ --exclude=pre-deploy/ --exclude=selfservice/ --exclude=00_backup_อย่าลบ/ /tmp/angular-deploy/ ${DEPLOY_PATH}/; chown -R ${SSH_USER}:${SSH_USER} ${DEPLOY_PATH}; rm -rf /tmp/angular-deploy; echo DEPLOY_OK"
+          ${SU_PASSWORD}
           DEPLOY_SCRIPT
 
           echo "✅ Deploy completed"

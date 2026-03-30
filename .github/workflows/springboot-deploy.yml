@@ -141,14 +141,11 @@ jobs:
             "$WAR_FILE" ${{ secrets.SSH_HOST }}:/tmp/${WAR_FILENAME}
 
           # ใช้ su - ย้ายไฟล์จาก /tmp ไป staging path ด้วยสิทธิ์ root
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
+          # -tt บังคับจัดสรร PTY ให้ su อ่าน password ได้
+          ssh -tt -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << COPY_SCRIPT
-          echo "${SU_PASSWORD}" | su - -c "\
-            mkdir -p ${STAGING_PATH}; \
-            cp /tmp/${WAR_FILENAME} ${STAGING_PATH}/${WAR_FILENAME}; \
-            rm -f /tmp/${WAR_FILENAME}; \
-            echo '✅ WAR file moved to staging'; \
-          "
+          su - -c "mkdir -p ${STAGING_PATH}; cp /tmp/${WAR_FILENAME} ${STAGING_PATH}/${WAR_FILENAME}; rm -f /tmp/${WAR_FILENAME}; echo COPY_OK"
+          ${SU_PASSWORD}
           COPY_SCRIPT
 
           echo "✅ WAR copied to server"
@@ -168,17 +165,11 @@ jobs:
 
           APP_DIR="${WAR_FILENAME%.war}"
 
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
+          # -tt บังคับจัดสรร PTY ให้ su อ่าน password ได้
+          ssh -tt -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
-          echo "${SU_PASSWORD}" | su - -c "\
-            echo 'start deploy'; \
-            service ${TOMCAT_SERVICE} stop; \
-            rm -rf ${WEBAPPS_PATH}/${APP_DIR}; \
-            rm -rf ${WEBAPPS_PATH}/${WAR_FILENAME}; \
-            cp ${STAGING_PATH}/${WAR_FILENAME} ${WEBAPPS_PATH}/${WAR_FILENAME}; \
-            service ${TOMCAT_SERVICE} start; \
-            echo '✅ Deploy completed'; \
-          "
+          su - -c "service ${TOMCAT_SERVICE} stop; rm -rf ${WEBAPPS_PATH}/${APP_DIR}; rm -rf ${WEBAPPS_PATH}/${WAR_FILENAME}; cp ${STAGING_PATH}/${WAR_FILENAME} ${WEBAPPS_PATH}/${WAR_FILENAME}; service ${TOMCAT_SERVICE} start; echo DEPLOY_OK"
+          ${SU_PASSWORD}
           DEPLOY_SCRIPT
 
       # ─────────────────────────────────────────────────────────────
