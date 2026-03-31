@@ -8,11 +8,9 @@
 name: CI
 
 # on: กำหนดเหตุการณ์ (Trigger) ที่จะทำให้ workflow นี้ถูกรันอัตโนมัติ
-on:
-  # push: หมายถึงทำงานเมื่อมีการ Push โค้ดขึ้นไปบน Branch ที่กำหนด (เช่น main หรือ master)
-  push:
-    branches: [master]
-  # pull_request: หมายถึงทำงานเมื่อมีการเปิด Pull Request เข้ามาที่ Branch ที่กำหนด
+on:  
+  # push:
+  # branches: [master]
   pull_request:
     branches: [master]
 
