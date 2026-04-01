@@ -1,0 +1,88 @@
+# 🔍 Reusable .NET CI
+# ใช้กับ: ASP.NET Core / .NET (restore + build)
+# 📚 Docs: https://github.com/anon120655/devops
+
+name: Reusable .NET CI
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        description: ".NET SDK version (e.g. 6.0.x, 8.0.x)"
+        type: string
+        required: true
+      csproj-path:
+        description: "Path to .csproj from repo root (e.g. ThaiHealthAcademy.API.csproj)"
+        type: string
+        required: true
+      target-framework:
+        description: "Target framework moniker (e.g. net6.0, net8.0)"
+        type: string
+        required: true
+      runtime-identifier:
+        description: "Runtime for build (linux-x64, win-x64). Empty = omit -r (portable / RID-less build)"
+        type: string
+        default: "linux-x64"
+      build-configuration:
+        description: "Build configuration (Release, Debug)"
+        type: string
+        default: "Release"
+      working-directory:
+        description: "Working directory relative to repo root"
+        type: string
+        default: "."
+      runs-on:
+        description: "Runner to use"
+        type: string
+        default: "self-hosted"
+
+jobs:
+  quality:
+    name: Quality Gate
+    runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Restore & build
+        env:
+          CSPROJ: ${{ inputs.csproj-path }}
+          CONFIG: ${{ inputs.build-configuration }}
+          FRAMEWORK: ${{ inputs.target-framework }}
+          RID: ${{ inputs.runtime-identifier }}
+        run: |
+          set -e
+          echo "📦 Restoring..."
+          dotnet restore "$CSPROJ"
+          RID_ARG=
+          if [ -n "$RID" ]; then
+            RID_ARG="-r $RID"
+            echo "🏗️ Building ($CONFIG, TFM=$FRAMEWORK, RID=$RID)..."
+          else
+            echo "🏗️ Building ($CONFIG, TFM=$FRAMEWORK, no RID)..."
+          fi
+          dotnet build "$CSPROJ" -c "$CONFIG" -f "$FRAMEWORK" --no-restore $RID_ARG
+          echo "✅ Build passed"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🔍 .NET CI Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **SDK** | ${{ inputs.dotnet-version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Project** | ${{ inputs.csproj-path }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **TFM** | ${{ inputs.target-framework }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **RID** | ${{ inputs.runtime-identifier }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY

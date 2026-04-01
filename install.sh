@@ -22,6 +22,7 @@ if [ -z "$FRAMEWORK" ]; then
   echo "Available frameworks:"
   echo "  ✅ angular       - Angular (SSH + Static Files)"
   echo "  ✅ springboot    - Spring Boot (SSH + WAR/Tomcat)"
+  echo "  ✅ dotnet        - .NET (dotnet publish + SSH rsync + systemd)"
   echo ""
   echo "Example:"
   echo "  git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh angular"
@@ -33,12 +34,12 @@ fi
 # ตรวจสอบ framework
 # ─────────────────────────────────────────────────────────────
 case $FRAMEWORK in
-  angular|springboot)
+  angular|springboot|dotnet)
     echo "📦 Installing CI/CD for: $FRAMEWORK"
     ;;
   *)
     echo "❌ Unknown framework: $FRAMEWORK"
-    echo "   Available: angular, springboot"
+    echo "   Available: angular, springboot, dotnet"
     exit 1
     ;;
 esac
@@ -113,6 +114,11 @@ case $FRAMEWORK in
     echo "      🔹 tomcat-webapps-path  : Path ของ Tomcat webapps (เช่น /opt/tomcat/webapps)"
     echo "      🔹 deploy-staging-path  : Path สำหรับวาง WAR ชั่วคราว (เช่น /home/locus/deploy)"
     echo "      🔹 tomcat-service-name  : ชื่อ service ของ Tomcat (เช่น tomcat)"
+    ;;
+  dotnet)
+    echo "      🔹 csproj-path / target-framework / runtime-identifier (default linux-x64)"
+    echo "      🔹 deploy-path / systemd-service — แยกไฟล์ UAT/PROD และ backend/frontend ตามตัวอย่าง"
+    echo "      🔹 ลบไฟล์ deploy ที่ไม่ใช้ (เช่น เหลือแค่ ci + deploy-uat-backend) แล้วแก้ชื่อ workflow ตามต้องการ"
     ;;
 esac
 

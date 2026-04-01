@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────────────
+# 🚀 .NET Web — Deploy PRODUCTION
+# ─────────────────────────────────────────────────────────────
+name: Deploy Web to PRODUCTION
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: anon120655/devops/.github/workflows/dotnet-deploy.yml@main
+    with:
+      dotnet-version: "6.0.x"
+      csproj-path: "ThaiHealthAcademy.csproj"
+      target-framework: "net6.0"
+      runtime-identifier: "linux-x64"
+      self-contained: false
+      project-kind: "frontend"
+      deploy-path: "/home/ibusiness/prd/publish_frontend"
+      systemd-service: "PRDapp.service"
+      working-directory: "."
+      backup-remote: true
+      rsync-delete: false
+      runs-on: "self-hosted"
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+      SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+      SSH_USERNAME: ${{ secrets.PROD_SSH_USERNAME }}
+      SSH_PORT: ${{ secrets.PROD_SSH_PORT }}

@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────
+# 🚀 .NET API — Deploy UAT
+# ─────────────────────────────────────────────────────────────
+# 📁 ตัวอย่าง: backend (Kestrel) — วางทับ /home/.../publish แล้ว restart systemd
+# 📝 Server เดียวกับ prod ได้ ต่างกันแค่ deploy-path + systemd-service + secrets UAT_
+# ─────────────────────────────────────────────────────────────
+name: Deploy API to UAT
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: anon120655/devops/.github/workflows/dotnet-deploy.yml@main
+    with:
+      dotnet-version: "6.0.x"
+      csproj-path: "ThaiHealthAcademy.API.csproj"
+      target-framework: "net6.0"
+      runtime-identifier: "linux-x64"
+      self-contained: false
+      project-kind: "backend"
+      deploy-path: "/home/ibusiness/publish"
+      systemd-service: "kestrel-helloapp_api.service"
+      working-directory: "."
+      backup-remote: true
+      rsync-delete: false
+      runs-on: "self-hosted"
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.UAT_SSH_PRIVATE_KEY }}
+      SSH_HOST: ${{ secrets.UAT_SSH_HOST }} # เช่น 192.167.12.156
+      SSH_USERNAME: ${{ secrets.UAT_SSH_USERNAME }}
+      SSH_PORT: ${{ secrets.UAT_SSH_PORT }}

@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────────────
+# 🚀 .NET API — Deploy PRODUCTION
+# ─────────────────────────────────────────────────────────────
+name: Deploy API to PRODUCTION
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: anon120655/devops/.github/workflows/dotnet-deploy.yml@main
+    with:
+      dotnet-version: "6.0.x"
+      csproj-path: "ThaiHealthAcademy.API.csproj"
+      target-framework: "net6.0"
+      runtime-identifier: "linux-x64"
+      self-contained: false
+      project-kind: "backend"
+      deploy-path: "/home/ibusiness/prd/publish"
+      systemd-service: "PRDapi.service"
+      working-directory: "."
+      backup-remote: true
+      rsync-delete: false
+      runs-on: "self-hosted"
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+      SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+      SSH_USERNAME: ${{ secrets.PROD_SSH_USERNAME }}
+      SSH_PORT: ${{ secrets.PROD_SSH_PORT }}

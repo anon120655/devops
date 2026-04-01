@@ -1,0 +1,26 @@
+# ─────────────────────────────────────────────────────────────
+# 🔍 .NET CI — Caller Workflow
+# ─────────────────────────────────────────────────────────────
+# 📁 วางไฟล์นี้ไว้ที่: <dotnet-project>/.github/workflows/ci.yml
+# 📝 แก้ anon120655 เป็นชื่อ Organization ของคุณ
+# 📝 CI ตัวเดียวใช้ร่วมได้ทั้ง API และ Frontend (แยก repo หรือแยก workflow ก็ได้)
+# ─────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  # push:
+  #   branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  quality:
+    uses: anon120655/devops/.github/workflows/dotnet-ci.yml@main
+    with:
+      dotnet-version: "6.0.x" # ← ปรับตาม SDK (เช่น 8.0.x)
+      csproj-path: "ThaiHealthAcademy.API.csproj" # ← path ไปยัง .csproj
+      target-framework: "net6.0" # ← net6.0, net8.0, ...
+      runtime-identifier: "linux-x64" # ← linux-x64 (default) หรือ win-x64; ว่าง = build แบบไม่ระบุ RID
+      build-configuration: "Release"
+      working-directory: "." # ← ถ้าโปรเจกต์อยู่ subfolder ให้ใส่ เช่น apps/api
+      runs-on: "self-hosted"

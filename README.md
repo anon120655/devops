@@ -16,6 +16,9 @@ git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh
 
 # Spring Boot
 git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh springboot && rm -rf /tmp/cicd
+
+# .NET (ASP.NET Core — publish + SSH + systemd)
+git clone git@github.com:anon120655/devops.git /tmp/cicd && /tmp/cicd/install.sh dotnet && rm -rf /tmp/cicd
 ```
 
 ### Windows (PowerShell)
@@ -26,6 +29,9 @@ Remove-Item -Recurse -Force C:\tmp\cicd -ErrorAction SilentlyContinue; git clone
 
 # Spring Boot
 Remove-Item -Recurse -Force C:\tmp\cicd -ErrorAction SilentlyContinue; git clone git@github.com:anon120655/devops.git C:\tmp\cicd; & "C:\Program Files\Git\bin\bash.exe" C:\tmp\cicd\install.sh springboot; Remove-Item -Recurse -Force C:\tmp\cicd
+
+# .NET
+Remove-Item -Recurse -Force C:\tmp\cicd -ErrorAction SilentlyContinue; git clone git@github.com:anon120655/devops.git C:\tmp\cicd; & "C:\Program Files\Git\bin\bash.exe" C:\tmp\cicd\install.sh dotnet; Remove-Item -Recurse -Force C:\tmp\cicd
 ```
 
 > **หมายเหตุ**: Windows ต้องมี [Git for Windows](https://git-scm.com/download/win) ติดตั้งอยู่ (ใช้ `bash.exe` ที่มาพร้อม Git)
@@ -38,6 +44,7 @@ Remove-Item -Recurse -Force C:\tmp\cicd -ErrorAction SilentlyContinue; git clone
 |-----------|-----|--------|
 | **Angular** | Lint, Build | SSH + Static Files (rsync) |
 | **Spring Boot** | Maven Build | SSH + WAR/Tomcat |
+| **.NET** | Restore + Build | `dotnet publish` + SSH rsync + `systemctl restart` |
 
 ---
 
@@ -52,7 +59,9 @@ devops/.github/workflows/          ← Reusable templates (แก้ที่น
 ├── angular-ci.yml
 ├── angular-deploy.yml
 ├── springboot-ci.yml
-└── springboot-deploy.yml
+├── springboot-deploy.yml
+├── dotnet-ci.yml
+└── dotnet-deploy.yml
 
 your-project/.github/workflows/   ← Caller workflows (สั้นมาก ~15-30 บรรทัด)
 ├── ci.yml                         เรียกใช้ reusable template
@@ -126,6 +135,34 @@ with:
   deploy-staging-path: '/home/locus/deploy'         # ← path วาง WAR ชั่วคราว
   tomcat-service-name: 'tomcat'                     # ← ชื่อ service
 ```
+
+#### .NET (ASP.NET Core)
+
+ติดตั้งด้วย `install.sh dotnet` จะได้ตัวอย่างหลายไฟล์ — เลือกใช้ตาม repo (API แยก / Web แยก) แล้วลบไฟล์ที่ไม่ใช้ออก
+
+```yaml
+# CI (ใช้ร่วมได้ทั้งโปรเจกต์)
+with:
+  dotnet-version: '6.0.x'
+  csproj-path: 'YourApp.API.csproj'
+  target-framework: 'net6.0'
+  runtime-identifier: 'linux-x64'   # หรือ win-x64; ว่าง = build/publish ไม่ใส่ -r
+
+# Deploy
+with:
+  dotnet-version: '6.0.x'
+  csproj-path: 'YourApp.API.csproj'
+  target-framework: 'net6.0'
+  runtime-identifier: 'linux-x64'
+  self-contained: false
+  project-kind: 'backend'           # frontend = ลบ wwwroot/appkeys + wwwroot/files ก่อน sync
+  deploy-path: '/home/ibusiness/publish'
+  systemd-service: 'kestrel-helloapp_api.service'
+```
+
+**Runner**: job deploy ใช้ `ssh` + `rsync` — แนะนำ **Linux หรือ macOS self-hosted runner** (หรือ runner ที่มีเครื่องมือเหล่านี้) หากใช้ Windows runner ต้องมี OpenSSH/rsync ให้ครบเอง
+
+**Server**: ต้องตั้ง `sudoers` ให้ user ที่ deploy รัน `systemctl restart <unit>` แบบ NOPASSWD (เหมือน Spring Boot/Tomcat)
 
 ### 4. เพิ่ม GitHub Secrets
 
@@ -204,7 +241,9 @@ devops/
 │   ├── angular-ci.yml              #   Angular: lint + build
 │   ├── angular-deploy.yml          #   Angular: build + rsync ไป server
 │   ├── springboot-ci.yml           #   Spring Boot: maven build
-│   └── springboot-deploy.yml       #   Spring Boot: build WAR + deploy Tomcat
+│   ├── springboot-deploy.yml       #   Spring Boot: build WAR + deploy Tomcat
+│   ├── dotnet-ci.yml               #   .NET: restore + build
+│   └── dotnet-deploy.yml           #   .NET: publish + rsync + systemd
 ├── examples/                       # Caller workflow examples
 │   ├── angular/.github/workflows/
 │   │   ├── ci.yml
@@ -215,6 +254,13 @@ devops/
 │       ├── ci.yml
 │       ├── deploy-uat.yml
 │       ├── deploy-prod.yml
+│       └── test-ssh.yml
+│   └── dotnet/.github/workflows/
+│       ├── ci.yml
+│       ├── deploy-uat-backend.yml
+│       ├── deploy-prod-backend.yml
+│       ├── deploy-uat-frontend.yml
+│       ├── deploy-prod-frontend.yml
 │       └── test-ssh.yml
 ├── install.sh                      # Installer script
 └── README.md                       # คู่มือนี้
@@ -265,7 +311,36 @@ devops/
 | `tomcat-service-name` | string | | `'tomcat'` | ชื่อ Tomcat service |
 | `runs-on` | string | | `'self-hosted'` | Runner |
 
-### Secrets (ใช้ร่วมกันทั้ง Angular และ Spring Boot Deploy)
+### dotnet-ci.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `dotnet-version` | string | **required** | เวอร์ชัน SDK (เช่น `6.0.x`, `8.0.x`) |
+| `csproj-path` | string | **required** | path ไปยัง `.csproj` จาก root ของ working-directory |
+| `target-framework` | string | **required** | TFM (เช่น `net6.0`, `net8.0`) |
+| `runtime-identifier` | string | `linux-x64` | RID สำหรับ `dotnet build -r`; ว่าง = ไม่ส่ง `-r` |
+| `build-configuration` | string | `Release` | configuration |
+| `working-directory` | string | `.` | โฟลเดอร์ทำงาน (monorepo) |
+| `runs-on` | string | `self-hosted` | Runner |
+
+### dotnet-deploy.yml
+
+| Input | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `dotnet-version` | string | **required** | — | SDK version |
+| `csproj-path` | string | **required** | — | Path ไปยัง `.csproj` |
+| `target-framework` | string | **required** | — | TFM สำหรับ `-f` และ path publish |
+| `runtime-identifier` | string | | `linux-x64` | RID สำหรับ publish; ว่าง = ไม่ส่ง `-r` |
+| `self-contained` | boolean | | `false` | self-contained publish |
+| `project-kind` | string | | `backend` | `frontend` = ลบ `wwwroot/appkeys`, `wwwroot/files` จาก artifact ก่อน rsync |
+| `deploy-path` | string | **required** | — | path ปลายทางบน Linux server |
+| `systemd-service` | string | **required** | — | unit ที่รัน `sudo systemctl restart` |
+| `working-directory` | string | | `.` | working directory |
+| `backup-remote` | boolean | | `true` | backup โฟลเดอร์ปลายทางก่อน sync |
+| `rsync-delete` | boolean | | `false` | ส่ง `--delete` ให้ rsync |
+| `runs-on` | string | | `self-hosted` | Runner |
+
+### Secrets (ใช้ร่วมกันกับ Deploy แบบ SSH: Angular, Spring Boot, .NET)
 
 | Secret | Required | Description |
 |--------|----------|-------------|
@@ -275,7 +350,7 @@ devops/
 | `SSH_PORT` | | Port SSH (default: 22) |
 | | | **ไม่ต้องใช้ password** — ตั้ง sudoers NOPASSWD บน server แทน |
 
-> **หมายเหตุ**: ใน caller workflow ให้ใช้ prefix `UAT_` หรือ `PROD_` เช่น `${{ secrets.UAT_SSH_HOST }}` / `${{ secrets.PROD_SSH_HOST }}`
+> **หมายเหตุ**: ใน caller workflow ให้ใช้ prefix `UAT_` หรือ `PROD_` เช่น `${{ secrets.UAT_SSH_HOST }}` / `${{ secrets.PROD_SSH_HOST }}` — **.NET deploy ใช้ชุด secrets เดียวกันนี้**
 
 ---
 
@@ -296,6 +371,13 @@ Checkout → Setup Java → mvnw clean package → Setup SSH
 → su stop Tomcat → replace WAR → start Tomcat → Cleanup
 ```
 
+### .NET
+
+```
+Checkout → Setup .NET → dotnet publish → (frontend: strip wwwroot folders) → Setup SSH
+→ (optional) backup remote deploy-path → rsync publish/ → sudo systemctl restart → Cleanup
+```
+
 ---
 
 ## Benefits
@@ -309,6 +391,11 @@ Checkout → Setup Java → mvnw clean package → Setup SSH
 ---
 
 ## Changelog
+
+- **2026-04-01**: เพิ่ม .NET reusable workflows (`dotnet-ci.yml`, `dotnet-deploy.yml`)
+  - พารามิเตอร์ `dotnet-version`, `target-framework`, `runtime-identifier` (default `linux-x64`, ว่างได้ = ไม่ใส่ `-r`)
+  - Deploy: `dotnet publish` + rsync + `systemctl restart`; `project-kind: frontend` ลบ `wwwroot/appkeys` และ `wwwroot/files` ก่อน sync
+  - ตัวอย่าง caller ใน `examples/dotnet/` (แยก UAT/PROD และ backend/frontend), `install.sh dotnet`, อัปเดต README
 
 - **2026-03-30**: ปรับปรุง README ให้ตรงกับ workflow ปัจจุบัน
   - แก้ Inputs Reference ให้ตรงกับ YAML จริง (`maven-profile` แทน `build-tool`, ลบ `health-url` ที่ไม่มี)
