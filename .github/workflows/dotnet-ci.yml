@@ -61,16 +61,22 @@ jobs:
           RID: ${{ inputs.runtime-identifier }}
         run: |
           set -e
-          echo "📦 Restoring..."
-          dotnet restore "$CSPROJ"
           RID_ARG=
+          SELF_ARG=
           if [ -n "$RID" ]; then
             RID_ARG="-r $RID"
+            SELF_ARG="--no-self-contained"
+            echo "📦 Restoring (RID=$RID)..."
+          else
+            echo "📦 Restoring (no RID)..."
+          fi
+          dotnet restore "$CSPROJ" $RID_ARG
+          if [ -n "$RID" ]; then
             echo "🏗️ Building ($CONFIG, TFM=$FRAMEWORK, RID=$RID)..."
           else
             echo "🏗️ Building ($CONFIG, TFM=$FRAMEWORK, no RID)..."
           fi
-          dotnet build "$CSPROJ" -c "$CONFIG" -f "$FRAMEWORK" --no-restore $RID_ARG
+          dotnet build "$CSPROJ" -c "$CONFIG" -f "$FRAMEWORK" --no-restore $RID_ARG $SELF_ARG
           echo "✅ Build passed"
 
       - name: Summary
