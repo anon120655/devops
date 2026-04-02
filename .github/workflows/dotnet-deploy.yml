@@ -148,13 +148,13 @@ jobs:
               BACKUP_DIR=\"$BACKUP_BASE/$ROLE/\$(date +%Y%m%d)\"
               mkdir -p \"\$BACKUP_DIR\"
               if [ \"$ROLE\" = \"frontend\" ]; then
-                rsync -a --no-perms --no-owner --no-group \
+                rsync -a --no-perms --no-owner --no-group --omit-dir-times \
                   --exclude='wwwroot/files/' \
                   --exclude='wwwroot/image/' \
                   --exclude='wwwroot/appkeys/' \
                   \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
               else
-                rsync -a --no-perms --no-owner --no-group \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
+                rsync -a --no-perms --no-owner --no-group --omit-dir-times \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
               fi
               echo \"✅ Backup → \$BACKUP_DIR\"
             else
@@ -182,8 +182,9 @@ jobs:
           echo "📤 rsync → ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH"
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -p "$PORT" \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "mkdir -p \"$DEPLOY_PATH\""
-          # -a preserves perms/owner; many servers reject chmod/chown → "Operation not permitted" (rsync 23)
-          rsync -avz --no-perms --no-owner --no-group $DELETE_FLAG \
+          # -a + --no-perms/--no-owner/--no-group: avoid chmod/chown errors on dest
+          # --omit-dir-times: frontend wwwroot dirs often reject utime → "failed to set times" (rsync 23)
+          rsync -az --no-perms --no-owner --no-group --omit-dir-times $DELETE_FLAG \
             -e "ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -p $PORT" \
             "$LOCAL" "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH/"
           echo "✅ Rsync completed"
