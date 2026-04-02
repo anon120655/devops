@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────
-# 🔌 Test SSH (ทดสอบก่อน deploy จริง)
+# 🔌 Test SSH — เช็คต่อ Prod เท่านั้น (secrets: PROD_SSH_*)
 # ─────────────────────────────────────────────────────────────
-name: Test SSH Connection
+name: Test SSH Connection (Prod)
 
 on:
   workflow_dispatch:
@@ -13,18 +13,18 @@ jobs:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.UAT_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p ${{ secrets.UAT_SSH_PORT || 22 }} -H ${{ secrets.UAT_SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p ${{ secrets.PROD_SSH_PORT || 22 }} -H ${{ secrets.PROD_SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Test SSH
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
-              -p ${{ secrets.UAT_SSH_PORT || 22 }} \
-              -l "${{ secrets.UAT_SSH_USERNAME }}" \
-              ${{ secrets.UAT_SSH_HOST }} \
-              "echo '✅ UAT SSH OK' && whoami && pwd"
+              -p ${{ secrets.PROD_SSH_PORT || 22 }} \
+              -l "${{ secrets.PROD_SSH_USERNAME }}" \
+              ${{ secrets.PROD_SSH_HOST }} \
+              "echo '✅ Prod SSH OK' && whoami && pwd"
 
       - name: Cleanup SSH key
         if: always()
