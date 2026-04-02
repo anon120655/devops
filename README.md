@@ -138,24 +138,20 @@ with:
 
 #### .NET (ASP.NET Core)
 
-ติดตั้งด้วย `install.sh dotnet` จะได้ตัวอย่างหลายไฟล์ — เลือกใช้ตาม repo (API แยก / Web แยก) แล้วลบไฟล์ที่ไม่ใช้ออก
+ติดตั้งด้วย `install.sh dotnet` จะได้ตัวอย่างหลายไฟล์ — **วาง `.github/workflows/` ที่ราก repo** (ข้างๆ `.sln`) ถ้าเป็น monorepo
+
+ตัวอย่าง `examples/dotnet/ci.yml` มี job สองตัว (`quality-api` / `quality-web`) สำหรับโครงแบบ: `ThaiHealthAcademy.API/*.csproj` + `ThaiHealthAcademy/*.csproj` ที่ root มีแต่ `ThaiHealthAcademy.sln` — ถ้า repo เดี่ยวโปรเจกต์ให้เหลือ job เดียวและ `working-directory: '.'`
 
 ```yaml
-# CI (ใช้ร่วมได้ทั้งโปรเจกต์)
+# Deploy (monorepo: ตั้ง working-directory เป็นโฟลเดอร์โปรเจกต์)
 with:
   dotnet-version: '6.0.x'
-  csproj-path: 'YourApp.API.csproj'
-  target-framework: 'net6.0'
-  runtime-identifier: 'linux-x64'   # หรือ win-x64; ว่าง = build/publish ไม่ใส่ -r
-
-# Deploy
-with:
-  dotnet-version: '6.0.x'
-  csproj-path: 'YourApp.API.csproj'
+  csproj-path: 'YourApp.API.csproj'   # ชื่อไฟล์ภายใน working-directory
   target-framework: 'net6.0'
   runtime-identifier: 'linux-x64'
   self-contained: false
-  project-kind: 'backend'           # frontend = ลบ wwwroot/appkeys + wwwroot/files ก่อน sync
+  project-kind: 'backend'
+  working-directory: 'ThaiHealthAcademy.API'   # หรือ ThaiHealthAcademy ฝั่ง web
   deploy-path: '/home/ibusiness/publish'
   systemd-service: 'kestrel-helloapp_api.service'
 ```
@@ -398,7 +394,7 @@ Checkout → Setup .NET → dotnet publish → (frontend: strip wwwroot folders)
 - **2026-04-01**: เพิ่ม .NET reusable workflows (`dotnet-ci.yml`, `dotnet-deploy.yml`)
   - พารามิเตอร์ `dotnet-version`, `target-framework`, `runtime-identifier` (default `linux-x64`, ว่างได้ = ไม่ใส่ `-r`)
   - Deploy: `dotnet publish` + rsync + `systemctl restart`; `project-kind: frontend` ลบ `wwwroot/appkeys` และ `wwwroot/files` ก่อน sync
-  - ตัวอย่าง caller ใน `examples/dotnet/` (แยก UAT/PROD และ backend/frontend), `install.sh dotnet`, อัปเดต README
+  - ตัวอย่าง caller ใน `examples/dotnet/` (แยก UAT/PROD และ backend/frontend; monorepo: `working-directory` = `ThaiHealthAcademy.API` / `ThaiHealthAcademy`), `install.sh dotnet`, อัปเดต README
   - **dotnet-deploy backup**: ไปที่ `backup-base-path` (default `/home/ibusiness/prd/ib_backup`) แยก `backend/` กับ `frontend/` แล้วโฟลเดอร์วันที่ `%Y%m%d` บน server; frontend สำรองด้วย `rsync` แบบ exclude `wwwroot/files`, `wwwroot/image`, `wwwroot/appkeys`
 
 - **2026-03-30**: ปรับปรุง README ให้ตรงกับ workflow ปัจจุบัน

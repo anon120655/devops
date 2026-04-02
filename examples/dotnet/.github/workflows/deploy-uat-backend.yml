@@ -1,6 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 # 🚀 .NET API — Deploy UAT
 # ─────────────────────────────────────────────────────────────
+# 📁 monorepo: working-directory = โฟลเดอร์โปรเจกต์ API (ข้างๆ .sln ที่ root)
 # 📁 ตัวอย่าง: backend (Kestrel) — วางทับ /home/.../publish แล้ว restart systemd
 # 📝 Server เดียวกับ prod ได้ ต่างกันแค่ deploy-path + systemd-service + secrets UAT_
 # 📝 UAT: ไม่สำรองโฟลเดอร์ปลายทางก่อน deploy (backup-remote: false)
@@ -22,7 +23,7 @@ jobs:
       project-kind: "backend"
       deploy-path: "/home/ibusiness/publish"
       systemd-service: "kestrel-helloapp_api.service"
-      working-directory: "."
+      working-directory: "ThaiHealthAcademy.API"
       backup-remote: false
       rsync-delete: false
       runs-on: "self-hosted"

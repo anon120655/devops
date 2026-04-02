@@ -1,6 +1,8 @@
 # ─────────────────────────────────────────────────────────────
 # 🚀 .NET API — Deploy PRODUCTION
 # ─────────────────────────────────────────────────────────────
+# 📁 monorepo: ThaiHealthAcademy.API/ + ThaiHealthAcademy.API.csproj
+# ─────────────────────────────────────────────────────────────
 # 💾 backup-remote: สำรองจาก deploy-path ไปที่
 #    <backup-base-path>/backend/$(date +%Y%m%d)/  (default base: /home/ibusiness/prd/ib_backup)
 # ─────────────────────────────────────────────────────────────
@@ -23,7 +25,7 @@ jobs:
       project-kind: "backend"
       deploy-path: "/home/ibusiness/prd/publish"
       systemd-service: "PRDapi.service"
-      working-directory: "."
+      working-directory: "ThaiHealthAcademy.API"
       backup-remote: true
       backup-base-path: "/home/ibusiness/prd/ib_backup"
       rsync-delete: false

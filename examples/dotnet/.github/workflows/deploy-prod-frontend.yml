@@ -1,6 +1,8 @@
 # ─────────────────────────────────────────────────────────────
 # 🚀 .NET Web — Deploy PRODUCTION
 # ─────────────────────────────────────────────────────────────
+# 📁 monorepo: ThaiHealthAcademy/ + ThaiHealthAcademy.csproj
+# ─────────────────────────────────────────────────────────────
 # 💾 backup-remote: สำรองไปที่ <backup-base-path>/frontend/$(date +%Y%m%d)/
 #    ไม่รวม wwwroot/files, wwwroot/image, wwwroot/appkeys (ลดขนาด backup)
 # ─────────────────────────────────────────────────────────────
@@ -23,7 +25,7 @@ jobs:
       project-kind: "frontend"
       deploy-path: "/home/ibusiness/prd/publish_frontend"
       systemd-service: "PRDapp.service"
-      working-directory: "."
+      working-directory: "ThaiHealthAcademy"
       backup-remote: true
       backup-base-path: "/home/ibusiness/prd/ib_backup"
       rsync-delete: false
