@@ -70,13 +70,13 @@ jobs:
           else
             echo "📦 Restoring (no RID)..."
           fi
-          dotnet restore "$CSPROJ" $RID_ARG
+          dotnet restore "$CSPROJ" $RID_ARG --console-logger-parameters ErrorsOnly
           if [ -n "$RID" ]; then
             echo "🏗️ Building ($CONFIG, TFM=$FRAMEWORK, RID=$RID)..."
           else
             echo "🏗️ Building ($CONFIG, TFM=$FRAMEWORK, no RID)..."
           fi
-          dotnet build "$CSPROJ" -c "$CONFIG" -f "$FRAMEWORK" --no-restore $RID_ARG $SELF_ARG
+          dotnet build "$CSPROJ" -c "$CONFIG" -f "$FRAMEWORK" --no-restore $RID_ARG $SELF_ARG --console-logger-parameters ErrorsOnly
           echo "✅ Build passed"
 
       - name: Summary

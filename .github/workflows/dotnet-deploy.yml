@@ -110,7 +110,7 @@ jobs:
             SC=(--self-contained false)
           fi
           echo "📦 dotnet publish → $OUT"
-          dotnet publish "$CSPROJ" -c Release $RID_ARG "${SC[@]}" -f "$FRAMEWORK" -o "$OUT"
+          dotnet publish "$CSPROJ" -c Release $RID_ARG "${SC[@]}" -f "$FRAMEWORK" -o "$OUT" --console-logger-parameters ErrorsOnly
           echo "✅ Publish completed"
 
       - name: Strip server-only wwwroot folders (frontend)
