@@ -28,7 +28,7 @@ on:
         type: boolean
         default: false
       project-kind:
-        description: "backend = API only; frontend = also removes wwwroot/appkeys and wwwroot/files from publish output before sync"
+        description: "backend | frontend — frontend strips appkeys/files from publish artifact; backup excludes wwwroot/files, image, appkeys"
         type: string
         default: "backend"
       deploy-path:
@@ -47,6 +47,10 @@ on:
         description: "Backup remote deploy-path before rsync"
         type: boolean
         default: true
+      backup-base-path:
+        description: "Remote base dir for backups: <base>/<backend|frontend>/<YYYYMMDD>/ (date from server TZ)"
+        type: string
+        default: "/home/ibusiness/prd/ib_backup"
       rsync-delete:
         description: "rsync --delete (mirror remote to publish output; use with care)"
         type: boolean
@@ -129,17 +133,29 @@ jobs:
         if: inputs.backup-remote
         env:
           DEPLOY_PATH: ${{ inputs.deploy-path }}
+          BACKUP_BASE: ${{ inputs.backup-base-path }}
+          PROJECT_KIND: ${{ inputs.project-kind }}
         run: |
-          echo "💾 Backing up remote: $DEPLOY_PATH"
+          ROLE=backend
+          if [ "$PROJECT_KIND" = "frontend" ]; then ROLE=frontend; fi
+          echo "💾 Backing up remote: $DEPLOY_PATH → $BACKUP_BASE/$ROLE/\$(date +%Y%m%d) (on server)"
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
               -o LogLevel=ERROR \
               -p ${{ secrets.SSH_PORT || 22 }} \
               -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "
             if [ -d \"$DEPLOY_PATH\" ] && [ \"\$(ls -A \"$DEPLOY_PATH\" 2>/dev/null)\" ]; then
-              BACKUP_DIR=\"${DEPLOY_PATH}_backup/\$(date +%Y%m%d_%H%M%S)\"
+              BACKUP_DIR=\"$BACKUP_BASE/$ROLE/\$(date +%Y%m%d)\"
               mkdir -p \"\$BACKUP_DIR\"
-              cp -a \"$DEPLOY_PATH/.\" \"\$BACKUP_DIR/\" || true
+              if [ \"$ROLE\" = \"frontend\" ]; then
+                rsync -a \
+                  --exclude='wwwroot/files/' \
+                  --exclude='wwwroot/image/' \
+                  --exclude='wwwroot/appkeys/' \
+                  \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
+              else
+                rsync -a \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
+              fi
               echo \"✅ Backup → \$BACKUP_DIR\"
             else
               echo \"⚠️ Nothing to backup (empty or missing)\"
@@ -201,6 +217,7 @@ jobs:
           echo "| **RID** | ${{ inputs.runtime-identifier }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Kind** | ${{ inputs.project-kind }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Remote path** | ${{ inputs.deploy-path }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Backup base** | ${{ inputs.backup-base-path }} (if enabled) |" >> $GITHUB_STEP_SUMMARY
           echo "| **systemd** | ${{ inputs.systemd-service }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Ref** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY

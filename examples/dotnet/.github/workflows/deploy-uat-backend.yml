@@ -3,6 +3,7 @@
 # ─────────────────────────────────────────────────────────────
 # 📁 ตัวอย่าง: backend (Kestrel) — วางทับ /home/.../publish แล้ว restart systemd
 # 📝 Server เดียวกับ prod ได้ ต่างกันแค่ deploy-path + systemd-service + secrets UAT_
+# 📝 UAT: ไม่สำรองโฟลเดอร์ปลายทางก่อน deploy (backup-remote: false)
 # ─────────────────────────────────────────────────────────────
 name: Deploy API to UAT
 
@@ -22,7 +23,7 @@ jobs:
       deploy-path: "/home/ibusiness/publish"
       systemd-service: "kestrel-helloapp_api.service"
       working-directory: "."
-      backup-remote: true
+      backup-remote: false
       rsync-delete: false
       runs-on: "self-hosted"
     secrets:

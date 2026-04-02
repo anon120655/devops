@@ -1,6 +1,9 @@
 # ─────────────────────────────────────────────────────────────
 # 🚀 .NET API — Deploy PRODUCTION
 # ─────────────────────────────────────────────────────────────
+# 💾 backup-remote: สำรองจาก deploy-path ไปที่
+#    <backup-base-path>/backend/$(date +%Y%m%d)/  (default base: /home/ibusiness/prd/ib_backup)
+# ─────────────────────────────────────────────────────────────
 name: Deploy API to PRODUCTION
 
 on:
@@ -22,6 +25,7 @@ jobs:
       systemd-service: "PRDapi.service"
       working-directory: "."
       backup-remote: true
+      backup-base-path: "/home/ibusiness/prd/ib_backup"
       rsync-delete: false
       runs-on: "self-hosted"
     secrets:

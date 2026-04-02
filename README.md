@@ -164,6 +164,8 @@ with:
 
 **Server**: ต้องตั้ง `sudoers` ให้ user ที่ deploy รัน `systemctl restart <unit>` แบบ NOPASSWD (เหมือน Spring Boot/Tomcat)
 
+**Server (backup)**: ถ้าเปิด `backup-remote` ต้องติดตั้ง `rsync` บน server (ขั้นตอน backup รัน `rsync` บนเครื่องปลายทาง)
+
 ### 4. เพิ่ม GitHub Secrets
 
 ไปที่ **Settings > Secrets and variables > Actions** ของ project repo และเพิ่ม:
@@ -336,7 +338,8 @@ devops/
 | `deploy-path` | string | **required** | — | path ปลายทางบน Linux server |
 | `systemd-service` | string | **required** | — | unit ที่รัน `sudo systemctl restart` |
 | `working-directory` | string | | `.` | working directory |
-| `backup-remote` | boolean | | `true` | backup โฟลเดอร์ปลายทางก่อน sync |
+| `backup-remote` | boolean | | `true` | backup จาก `deploy-path` ก่อน sync (รันบน server) |
+| `backup-base-path` | string | | `/home/ibusiness/prd/ib_backup` | ปลายทาง `<base>/backend/` หรือ `<base>/frontend/` แล้ว `<YYYYMMDD>/` (`date` บน server); frontend ใช้ `rsync --exclude` สำหรับ `wwwroot/files`, `wwwroot/image`, `wwwroot/appkeys` |
 | `rsync-delete` | boolean | | `false` | ส่ง `--delete` ให้ rsync |
 | `runs-on` | string | | `self-hosted` | Runner |
 
@@ -375,7 +378,7 @@ Checkout → Setup Java → mvnw clean package → Setup SSH
 
 ```
 Checkout → Setup .NET → dotnet publish → (frontend: strip wwwroot folders) → Setup SSH
-→ (optional) backup remote deploy-path → rsync publish/ → sudo systemctl restart → Cleanup
+→ (optional) backup on server to `<backup-base-path>/<backend|frontend>/<YYYYMMDD>/` (frontend excludes heavy wwwroot dirs) → rsync publish/ → sudo systemctl restart → Cleanup
 ```
 
 ---
@@ -396,6 +399,7 @@ Checkout → Setup .NET → dotnet publish → (frontend: strip wwwroot folders)
   - พารามิเตอร์ `dotnet-version`, `target-framework`, `runtime-identifier` (default `linux-x64`, ว่างได้ = ไม่ใส่ `-r`)
   - Deploy: `dotnet publish` + rsync + `systemctl restart`; `project-kind: frontend` ลบ `wwwroot/appkeys` และ `wwwroot/files` ก่อน sync
   - ตัวอย่าง caller ใน `examples/dotnet/` (แยก UAT/PROD และ backend/frontend), `install.sh dotnet`, อัปเดต README
+  - **dotnet-deploy backup**: ไปที่ `backup-base-path` (default `/home/ibusiness/prd/ib_backup`) แยก `backend/` กับ `frontend/` แล้วโฟลเดอร์วันที่ `%Y%m%d` บน server; frontend สำรองด้วย `rsync` แบบ exclude `wwwroot/files`, `wwwroot/image`, `wwwroot/appkeys`
 
 - **2026-03-30**: ปรับปรุง README ให้ตรงกับ workflow ปัจจุบัน
   - แก้ Inputs Reference ให้ตรงกับ YAML จริง (`maven-profile` แทน `build-tool`, ลบ `health-url` ที่ไม่มี)

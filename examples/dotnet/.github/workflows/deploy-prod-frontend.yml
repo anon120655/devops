@@ -1,6 +1,9 @@
 # ─────────────────────────────────────────────────────────────
 # 🚀 .NET Web — Deploy PRODUCTION
 # ─────────────────────────────────────────────────────────────
+# 💾 backup-remote: สำรองไปที่ <backup-base-path>/frontend/$(date +%Y%m%d)/
+#    ไม่รวม wwwroot/files, wwwroot/image, wwwroot/appkeys (ลดขนาด backup)
+# ─────────────────────────────────────────────────────────────
 name: Deploy Web to PRODUCTION
 
 on:
@@ -22,6 +25,7 @@ jobs:
       systemd-service: "PRDapp.service"
       working-directory: "."
       backup-remote: true
+      backup-base-path: "/home/ibusiness/prd/ib_backup"
       rsync-delete: false
       runs-on: "self-hosted"
     secrets:
