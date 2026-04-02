@@ -5,6 +5,7 @@
 # ─────────────────────────────────────────────────────────────
 # 💾 backup-remote: สำรองไปที่ <backup-base-path>/frontend/$(date +%Y%m%d)/
 #    ไม่รวม wwwroot/files, wwwroot/image, wwwroot/appkeys (ลดขนาด backup)
+# 📝 frontend: ก่อน rsync มี sudo chown deploy-path ให้ SSH user — ต้อง NOPASSWD chown (หรือ pre-rsync-chown: false)
 # ─────────────────────────────────────────────────────────────
 name: Deploy Web to PRODUCTION
 

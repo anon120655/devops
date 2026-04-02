@@ -55,6 +55,10 @@ on:
         description: "rsync --delete (mirror remote to publish output; use with care)"
         type: boolean
         default: false
+      pre-rsync-chown:
+        description: "frontend: sudo chown -R deploy user on deploy-path before rsync (fixes wwwroot mkstemp Permission denied if dirs are root-owned). Requires NOPASSWD chown or same as systemctl sudo."
+        type: boolean
+        default: true
       runs-on:
         description: "Runner to use (Linux/macOS recommended for ssh/rsync)"
         type: string
@@ -167,6 +171,8 @@ jobs:
           FRAMEWORK: ${{ inputs.target-framework }}
           DEPLOY_PATH: ${{ inputs.deploy-path }}
           RSYNC_DELETE: ${{ inputs.rsync-delete }}
+          PROJECT_KIND: ${{ inputs.project-kind }}
+          PRE_RSYNC_CHOWN: ${{ inputs.pre-rsync-chown }}
         run: |
           set -e
           LOCAL="bin/Release/${FRAMEWORK}/publish/"
@@ -179,14 +185,20 @@ jobs:
             DELETE_FLAG="--delete"
           fi
           PORT="${{ secrets.SSH_PORT || 22 }}"
-          echo "📤 rsync → ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH"
+          REMOTE_USER="${{ secrets.SSH_USERNAME }}"
+          REMOTE_HOST="${{ secrets.SSH_HOST }}"
+          RSYNC_TMP="/tmp/gha-rsync-${REMOTE_USER}"
+          echo "📤 rsync → ${REMOTE_USER}@${REMOTE_HOST}:$DEPLOY_PATH"
+          REMOTE_PREP="mkdir -p \"$DEPLOY_PATH\" \"$RSYNC_TMP\" && chmod 700 \"$RSYNC_TMP\""
+          if [ "$PROJECT_KIND" = "frontend" ] && [ "$PRE_RSYNC_CHOWN" = "true" ]; then
+            REMOTE_PREP="$REMOTE_PREP && sudo chown -R \"\$(id -un)\":\"\$(id -gn)\" \"$DEPLOY_PATH\""
+          fi
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -p "$PORT" \
-            -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "mkdir -p \"$DEPLOY_PATH\""
-          # -a + --no-perms/--no-owner/--no-group: avoid chmod/chown errors on dest
-          # --omit-dir-times: frontend wwwroot dirs often reject utime → "failed to set times" (rsync 23)
-          rsync -az --no-perms --no-owner --no-group --omit-dir-times $DELETE_FLAG \
+            -l "$REMOTE_USER" "$REMOTE_HOST" "$REMOTE_PREP"
+          # -rlDz: no -t → no utime on dest; -q → quiet log; --temp-dir → temp files not in root-owned wwwroot subdirs
+          rsync -rlDzq --no-perms --no-owner --no-group --temp-dir="$RSYNC_TMP" $DELETE_FLAG \
             -e "ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -p $PORT" \
-            "$LOCAL" "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH/"
+            "$LOCAL" "${REMOTE_USER}@${REMOTE_HOST}:$DEPLOY_PATH/"
           echo "✅ Rsync completed"
 
       - name: Restart systemd service

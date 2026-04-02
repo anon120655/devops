@@ -4,6 +4,8 @@
 # 📁 monorepo: ThaiHealthAcademy/ + ThaiHealthAcademy.csproj
 # ─────────────────────────────────────────────────────────────
 # 📝 UAT: ไม่สำรองโฟลเดอร์ปลายทางก่อน deploy (backup-remote: false)
+# 📝 frontend: workflow จะ sudo chown deploy-path ให้ SSH user ก่อน rsync (แก้ mkstemp ใน wwwroot/config, image)
+#    ต้องมี NOPASSWD สำหรับ chown (หรือปิดด้วย pre-rsync-chown: false แล้วจัด owner บนเซิร์ฟเวอร์เอง)
 # 📝 project-kind: frontend จะลบ wwwroot/appkeys และ wwwroot/files ออกจาก artifact ก่อน rsync
 #    (ไม่ทับไฟล์/โฟลเดอร์บน server ที่ runner ไม่ได้ส่งไป — ใช้ rsync-delete: false)
 # ─────────────────────────────────────────────────────────────
