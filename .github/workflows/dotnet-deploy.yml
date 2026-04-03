@@ -79,13 +79,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Deploy .NET → Server
+  check:
+    name: Check for updates
     runs-on: ${{ inputs.runs-on }}
-    defaults:
-      run:
-        working-directory: ${{ inputs.working-directory }}
-
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -117,14 +115,25 @@ jobs:
             echo "skip=true" >> $GITHUB_OUTPUT
           fi
 
+  deploy:
+    name: Deploy .NET → Server
+    needs: check
+    if: needs.check.outputs.skip != 'true'
+    runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup .NET
-        if: steps.check.outputs.skip != 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
 
       - name: Publish
-        if: steps.check.outputs.skip != 'true'
         env:
           CSPROJ: ${{ inputs.csproj-path }}
           FRAMEWORK: ${{ inputs.target-framework }}
@@ -148,7 +157,7 @@ jobs:
           echo "✅ Publish completed"
 
       - name: Strip server-only wwwroot folders (frontend)
-        if: steps.check.outputs.skip != 'true' && inputs.project-kind == 'frontend'
+        if: inputs.project-kind == 'frontend'
         env:
           FRAMEWORK: ${{ inputs.target-framework }}
         run: |
@@ -157,7 +166,6 @@ jobs:
           echo "✅ Removed wwwroot/appkeys and wwwroot/files from artifact (if present)"
 
       - name: Normalize SSH host env (strip CR/LF from secrets)
-        if: steps.check.outputs.skip != 'true'
         run: |
           h="${{ secrets.SSH_HOST }}"
           u="${{ secrets.SSH_USERNAME }}"
@@ -174,7 +182,6 @@ jobs:
           echo "GH_SSH_PORT=$p" >> "$GITHUB_ENV"
 
       - name: Setup SSH key
-        if: steps.check.outputs.skip != 'true'
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
@@ -182,7 +189,7 @@ jobs:
           ssh-keyscan -p "$GH_SSH_PORT" -H "$GH_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Backup remote deployment
-        if: steps.check.outputs.skip != 'true' && inputs.backup-remote
+        if: inputs.backup-remote
         env:
           DEPLOY_PATH: ${{ inputs.deploy-path }}
           BACKUP_BASE: ${{ inputs.backup-base-path }}
@@ -214,7 +221,6 @@ jobs:
               -l "$GH_SSH_USER" "$GH_SSH_HOST" bash -s
 
       - name: Rsync publish output to server
-        if: steps.check.outputs.skip != 'true'
         env:
           FRAMEWORK: ${{ inputs.target-framework }}
           DEPLOY_PATH: ${{ inputs.deploy-path }}
@@ -250,7 +256,6 @@ jobs:
           echo "✅ Rsync completed"
 
       - name: Restart systemd service
-        if: steps.check.outputs.skip != 'true'
         env:
           UNIT: ${{ inputs.systemd-service }}
         run: |
@@ -276,7 +281,7 @@ jobs:
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Status** | ${{ job.status == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Trigger** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Skipped** | ${{ steps.check.outputs.skip == 'true' && '⏭️ ใช่ (ไม่มี commit ใหม่)' || '❌ ไม่' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Skipped** | ${{ needs.check.outputs.skip == 'true' && '⏭️ ใช่ (ไม่มี commit ใหม่)' || '❌ ไม่' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Project** | ${{ inputs.csproj-path }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **TFM** | ${{ inputs.target-framework }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **RID** | ${{ inputs.runtime-identifier }} |" >> $GITHUB_STEP_SUMMARY
