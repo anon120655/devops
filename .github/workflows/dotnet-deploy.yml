@@ -147,24 +147,23 @@ jobs:
               -o StrictHostKeyChecking=no \
               -o LogLevel=ERROR \
               -p ${{ secrets.SSH_PORT || 22 }} \
-              -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "
-            if [ -d \"$DEPLOY_PATH\" ] && [ \"\$(ls -A \"$DEPLOY_PATH\" 2>/dev/null)\" ]; then
-              BACKUP_DIR=\"$BACKUP_BASE/$ROLE/\$(date +%Y%m%d)\"
-              mkdir -p \"\$BACKUP_DIR\"
-              if [ \"$ROLE\" = \"frontend\" ]; then
-                rsync -a --no-perms --no-owner --no-group --omit-dir-times \
-                  --exclude='wwwroot/files/' \
-                  --exclude='wwwroot/image/' \
-                  --exclude='wwwroot/appkeys/' \
-                  \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
-              else
-                rsync -a --no-perms --no-owner --no-group --omit-dir-times \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
-              fi
-              echo \"✅ Backup → \$BACKUP_DIR\"
+              -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} \
+              "if [ -d \"$DEPLOY_PATH\" ] && [ \"\$(ls -A \"$DEPLOY_PATH\" 2>/dev/null)\" ]; then
+            BACKUP_DIR=\"$BACKUP_BASE/$ROLE/\$(date +%Y%m%d)\"
+            mkdir -p \"\$BACKUP_DIR\"
+            if [ \"$ROLE\" = \"frontend\" ]; then
+              rsync -a --no-perms --no-owner --no-group --omit-dir-times \
+                --exclude='wwwroot/files/' \
+                --exclude='wwwroot/image/' \
+                --exclude='wwwroot/appkeys/' \
+                \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
             else
-              echo \"⚠️ Nothing to backup (empty or missing)\"
+              rsync -a --no-perms --no-owner --no-group --omit-dir-times \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
             fi
-          "
+            echo \"✅ Backup → \$BACKUP_DIR\"
+          else
+            echo \"⚠️ Nothing to backup (empty or missing)\"
+          fi"
 
       - name: Rsync publish output to server
         env:
