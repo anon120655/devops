@@ -53,18 +53,16 @@ concurrency:
 
 # jobs: กำหนดกลุ่มของงาน (Jobs) หลักที่จะให้ workflow นี้ทำ
 jobs:
-  # deploy: ตั้งชื่องานเองได้
-  deploy:
-    name: Deploy Angular → Server
-    # runs-on: เลือกว่าจะไปรันบน Server หรือระบบไหน (Ubuntu, Windows หรือ self-hosted ของบริษัท)
+  check:
+    name: Check for updates
     runs-on: ${{ inputs.runs-on }}
-
-    # steps: รายการคำสั่งย่อย (Steps) ที่รันเรียงตามลำดับจากบนลงล่าง
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # ดึงมา 2 commit เพื่อให้ git log ทำงานได้
+          fetch-depth: 2
 
       # ─────────────────────────────────────────────────────────────
       # 0. เช็ค commit ใหม่ (เฉพาะตอน trigger จาก schedule)
@@ -91,15 +89,23 @@ jobs:
             echo "skip=true" >> $GITHUB_OUTPUT
           fi
 
+  deploy:
+    name: Deploy Angular → Server
+    needs: check
+    if: needs.check.outputs.skip != 'true'
+    runs-on: ${{ inputs.runs-on }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Node.js
-        if: steps.check.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node-version }}
           cache: 'npm' # cache npm packages เพื่อเพิ่มความเร็ว (ข้ามดาวน์โหลดซ้ำถ้า package-lock.json ไม่เปลี่ยน)
 
       - name: Get dependencies
-        if: steps.check.outputs.skip != 'true'
         shell: bash
         run: |
           set -e
@@ -117,7 +123,7 @@ jobs:
       # 1. Prebuild (optional) - เช่น ปรับวันที่
       # ─────────────────────────────────────────────────────────────
       - name: Run prebuild script
-        if: steps.check.outputs.skip != 'true' && inputs.prebuild-script != ''
+        if: inputs.prebuild-script != ''
         env:
           TZ: Asia/Bangkok # ⏰ กำหนด Time Zone พื้นฐานของ Step นี้เป็นประเทศไทย (UTC+7) แก้ปัญหาเวลาห่าง 7 ชั่วโมง
         run: |
@@ -129,7 +135,6 @@ jobs:
       # 2. Build Angular
       # ─────────────────────────────────────────────────────────────
       - name: Build Angular
-        if: steps.check.outputs.skip != 'true'
         env:
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
@@ -141,7 +146,6 @@ jobs:
       # 3. Setup SSH Key
       # ─────────────────────────────────────────────────────────────
       - name: Setup SSH Key
-        if: steps.check.outputs.skip != 'true'
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
@@ -152,7 +156,6 @@ jobs:
       # 4. Backup current deployment (ไฟล์ root + assets → ib_backup/YYYYMMDD)
       # ─────────────────────────────────────────────────────────────
       - name: Backup current deployment
-        if: steps.check.outputs.skip != 'true'
         env:
           DEPLOY_PATH: ${{ inputs.deploy-path }}
         run: |
@@ -180,7 +183,6 @@ jobs:
       # 5. Deploy static files to server
       # ─────────────────────────────────────────────────────────────
       - name: Deploy to server
-        if: steps.check.outputs.skip != 'true'
         env:
           DEPLOY_PATH: ${{ inputs.deploy-path }}
           DIST_SUB: ${{ inputs.dist-subfolder }}
@@ -238,7 +240,7 @@ jobs:
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Status** | ${{ job.status == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Trigger** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Skipped** | ${{ steps.check.outputs.skip == 'true' && '⏭️ ใช่ (ไม่มี commit ใหม่)' || '❌ ไม่' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Skipped** | ${{ needs.check.outputs.skip == 'true' && '⏭️ ใช่ (ไม่มี commit ใหม่)' || '❌ ไม่' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Configuration** | ${{ inputs.angular-build-configuration }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Deploy Path** | ${{ inputs.deploy-path }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Tag** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
