@@ -63,8 +63,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # ดึงมา 2 commit เพื่อให้ git log ทำงานได้
+
+      # ─────────────────────────────────────────────────────────────
+      # 0. เช็ค commit ใหม่ (เฉพาะตอน trigger จาก schedule)
+      # ─────────────────────────────────────────────────────────────
+      - name: Check for new commits (schedule only)
+        id: check
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "⚡ Trigger: ${{ github.event_name }} → ข้ามการเช็ค"
+            echo "skip=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          LAST_COMMIT_TIME=$(git log -1 --format=%ct)
+          NOW=$(date +%s)
+          DIFF=$(( NOW - LAST_COMMIT_TIME ))
+
+          if [ $DIFF -lt 86400 ]; then
+            echo "✅ มี commit ใหม่ใน 24h (${DIFF}s ago) → Deploy"
+            echo "skip=false" >> $GITHUB_OUTPUT
+          else
+            echo "⏭️ ไม่มี commit ใหม่ใน 24h (${DIFF}s ago) → Skip"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Setup Java
+        if: steps.check.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           java-version: ${{ inputs.java-version }}
@@ -75,6 +103,7 @@ jobs:
       # 1. Build WAR file
       # ─────────────────────────────────────────────────────────────
       - name: Build WAR (Maven)
+        if: steps.check.outputs.skip != 'true'
         run: |
           echo "🏗️ Building WAR with Maven (Profile: ${{ inputs.maven-profile }})..."
           chmod +x mvnw 2>/dev/null || true
@@ -85,6 +114,7 @@ jobs:
       # 2. Setup SSH Key
       # ─────────────────────────────────────────────────────────────
       - name: Setup SSH Key
+        if: steps.check.outputs.skip != 'true'
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
@@ -95,6 +125,7 @@ jobs:
       # 3. Backup current deployment (thaihealth-eform-backend.war → ib_backup/YYYYMMDD)
       # ─────────────────────────────────────────────────────────────
       - name: Backup current deployment
+        if: steps.check.outputs.skip != 'true'
         env:
           WAR_FILENAME: ${{ inputs.war-filename }}
           STAGING_PATH: ${{ inputs.deploy-staging-path }}
@@ -119,6 +150,7 @@ jobs:
       # 4. Copy WAR to server
       # ─────────────────────────────────────────────────────────────
       - name: Copy WAR to server
+        if: steps.check.outputs.skip != 'true'
         env:
           WAR_FILENAME: ${{ inputs.war-filename }}
           STAGING_PATH: ${{ inputs.deploy-staging-path }}
@@ -150,9 +182,10 @@ jobs:
           echo "✅ WAR copied to server"
 
       # ─────────────────────────────────────────────────────────────
-      # 4. Deploy on server (stop Tomcat → replace WAR → start Tomcat)
+      # 5. Deploy on server (stop Tomcat → replace WAR → start Tomcat)
       # ─────────────────────────────────────────────────────────────
       - name: Deploy WAR on server
+        if: steps.check.outputs.skip != 'true'
         env:
           WAR_FILENAME: ${{ inputs.war-filename }}
           WEBAPPS_PATH: ${{ inputs.tomcat-webapps-path }}
@@ -195,6 +228,8 @@ jobs:
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Status** | ${{ job.status == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Trigger** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Skipped** | ${{ steps.check.outputs.skip == 'true' && '⏭️ ใช่ (ไม่มี commit ใหม่)' || '❌ ไม่' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **WAR** | ${{ inputs.war-filename }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Tomcat** | ${{ inputs.tomcat-webapps-path }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Java** | ${{ inputs.java-version }} |" >> $GITHUB_STEP_SUMMARY
