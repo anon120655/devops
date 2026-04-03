@@ -1,6 +1,7 @@
 # 🚀 Reusable .NET Deploy (dotnet publish + SSH rsync + systemd)
 # ใช้กับ: ASP.NET Core บน Linux (Kestrel / systemd)
 # 📚 Docs: https://github.com/anon120655/devops
+# Backup step: pipe script to `ssh … bash -s` (avoids brittle multiline `"` / `\` continuations on GHA).
 
 name: Reusable .NET Deploy
 
@@ -126,12 +127,28 @@ jobs:
           rm -rf "$OUT/wwwroot/appkeys" "$OUT/wwwroot/files" 2>/dev/null || true
           echo "✅ Removed wwwroot/appkeys and wwwroot/files from artifact (if present)"
 
+      - name: Normalize SSH host env (strip CR/LF from secrets)
+        run: |
+          h="${{ secrets.SSH_HOST }}"
+          u="${{ secrets.SSH_USERNAME }}"
+          p="${{ secrets.SSH_PORT || 22 }}"
+          h="${h//$'\r'/}"
+          h="${h//$'\n'/}"
+          u="${u//$'\r'/}"
+          u="${u//$'\n'/}"
+          p="${p//$'\r'/}"
+          p="${p//$'\n'/}"
+          [ -n "$p" ] || p=22
+          echo "GH_SSH_HOST=$h" >> "$GITHUB_ENV"
+          echo "GH_SSH_USER=$u" >> "$GITHUB_ENV"
+          echo "GH_SSH_PORT=$p" >> "$GITHUB_ENV"
+
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p ${{ secrets.SSH_PORT || 22 }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p "$GH_SSH_PORT" -H "$GH_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Backup remote deployment
         if: inputs.backup-remote
@@ -143,27 +160,27 @@ jobs:
           ROLE=backend
           if [ "$PROJECT_KIND" = "frontend" ]; then ROLE=frontend; fi
           echo "💾 Backing up remote: $DEPLOY_PATH → $BACKUP_BASE/$ROLE/\$(date +%Y%m%d) (on server)"
-          ssh -i ~/.ssh/deploy_key \
+          {
+            echo "export DEPLOY_PATH=$(printf '%q' "$DEPLOY_PATH")"
+            echo "export BACKUP_BASE=$(printf '%q' "$BACKUP_BASE")"
+            echo "export ROLE=$(printf '%q' "$ROLE")"
+            echo 'if [ -d "$DEPLOY_PATH" ] && [ "$(ls -A "$DEPLOY_PATH" 2>/dev/null)" ]; then'
+            echo '  BACKUP_DIR="$BACKUP_BASE/$ROLE/$(date +%Y%m%d)"'
+            echo '  mkdir -p "$BACKUP_DIR"'
+            echo '  if [ "$ROLE" = "frontend" ]; then'
+            echo '    rsync -a --no-perms --no-owner --no-group --omit-dir-times --exclude="wwwroot/files/" --exclude="wwwroot/image/" --exclude="wwwroot/appkeys/" "$DEPLOY_PATH/" "$BACKUP_DIR/"'
+            echo '  else'
+            echo '    rsync -a --no-perms --no-owner --no-group --omit-dir-times "$DEPLOY_PATH/" "$BACKUP_DIR/"'
+            echo '  fi'
+            echo '  echo "✅ Backup → $BACKUP_DIR"'
+            echo 'else'
+            echo '  echo "⚠️ Nothing to backup (empty or missing)"'
+            echo 'fi'
+          } | ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
               -o LogLevel=ERROR \
-              -p ${{ secrets.SSH_PORT || 22 }} \
-              -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} \
-              "if [ -d \"$DEPLOY_PATH\" ] && [ \"\$(ls -A \"$DEPLOY_PATH\" 2>/dev/null)\" ]; then
-            BACKUP_DIR=\"$BACKUP_BASE/$ROLE/\$(date +%Y%m%d)\"
-            mkdir -p \"\$BACKUP_DIR\"
-            if [ \"$ROLE\" = \"frontend\" ]; then
-              rsync -a --no-perms --no-owner --no-group --omit-dir-times \
-                --exclude='wwwroot/files/' \
-                --exclude='wwwroot/image/' \
-                --exclude='wwwroot/appkeys/' \
-                \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
-            else
-              rsync -a --no-perms --no-owner --no-group --omit-dir-times \"$DEPLOY_PATH/\" \"\$BACKUP_DIR/\"
-            fi
-            echo \"✅ Backup → \$BACKUP_DIR\"
-          else
-            echo \"⚠️ Nothing to backup (empty or missing)\"
-          fi"
+              -p "$GH_SSH_PORT" \
+              -l "$GH_SSH_USER" "$GH_SSH_HOST" bash -s
 
       - name: Rsync publish output to server
         env:
@@ -183,9 +200,9 @@ jobs:
           if [ "$RSYNC_DELETE" = "true" ]; then
             DELETE_FLAG="--delete"
           fi
-          PORT="${{ secrets.SSH_PORT || 22 }}"
-          REMOTE_USER="${{ secrets.SSH_USERNAME }}"
-          REMOTE_HOST="${{ secrets.SSH_HOST }}"
+          PORT="$GH_SSH_PORT"
+          REMOTE_USER="$GH_SSH_USER"
+          REMOTE_HOST="$GH_SSH_HOST"
           RSYNC_TMP="/tmp/gha-rsync-${REMOTE_USER}"
           echo "📤 rsync → ${REMOTE_USER}@${REMOTE_HOST}:$DEPLOY_PATH"
           REMOTE_PREP="mkdir -p \"$DEPLOY_PATH\" \"$RSYNC_TMP\" && chmod 700 \"$RSYNC_TMP\""
@@ -208,8 +225,8 @@ jobs:
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
               -o LogLevel=ERROR \
-              -p ${{ secrets.SSH_PORT || 22 }} \
-              -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} \
+              -p "$GH_SSH_PORT" \
+              -l "$GH_SSH_USER" "$GH_SSH_HOST" \
               "sudo systemctl restart $UNIT"
           echo "✅ Service restarted"
 
