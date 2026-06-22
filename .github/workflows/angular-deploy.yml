@@ -206,6 +206,7 @@ jobs:
           # ใช้ sudo (NOPASSWD) deploy จาก /tmp ไป deploy path แล้ว chown กลับเป็น user เดิม
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
+          set -e
           sudo rsync -a --delete \
             --exclude='ib_backup/' \
             --exclude='dr/' \

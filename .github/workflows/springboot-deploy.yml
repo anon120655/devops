@@ -143,6 +143,7 @@ jobs:
               -o LogLevel=ERROR \
               -p ${{ secrets.SSH_PORT || 22 }} \
               -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} "
+            set -e
             BACKUP_DIR=\"${STAGING_PATH}/ib_backup/\$(date +%Y%m%d)\"
             mkdir -p \"\$BACKUP_DIR\"
             echo \"📂 Backup target: \$BACKUP_DIR\"
@@ -179,6 +180,7 @@ jobs:
           # ใช้ sudo (NOPASSWD) ย้ายไฟล์จาก /tmp ไป staging path
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << COPY_SCRIPT
+          set -e
           mkdir -p ${STAGING_PATH}
           sudo rsync /tmp/${WAR_FILENAME} ${STAGING_PATH}/${WAR_FILENAME}
           sudo rm -f /tmp/${WAR_FILENAME}
@@ -203,6 +205,7 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -p ${{ secrets.SSH_PORT || 22 }} \
             -l "${{ secrets.SSH_USERNAME }}" ${{ secrets.SSH_HOST }} << DEPLOY_SCRIPT
+          set -e
           echo "🛑 Stopping Tomcat..."
           sudo service ${TOMCAT_SERVICE} stop || sudo systemctl stop ${TOMCAT_SERVICE} || true
           echo "🗑️ Removing old deployment..."
