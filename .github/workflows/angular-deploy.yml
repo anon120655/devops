@@ -215,7 +215,7 @@ jobs:
             --exclude='selfservice/' \
             --exclude='00_backup_อย่าลบ/' \
             /tmp/angular-deploy/ ${DEPLOY_PATH}/
-          sudo chown -R ${SSH_USER}:${SSH_USER} ${DEPLOY_PATH}
+          sudo chown -R ${SSH_USER}: ${DEPLOY_PATH}
           sudo rm -rf /tmp/angular-deploy
           echo "✅ Deploy completed"
           DEPLOY_SCRIPT
